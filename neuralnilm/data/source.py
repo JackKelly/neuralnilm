@@ -8,7 +8,7 @@ class Seq(object):
     input : np.ndarray
     target : np.ndarray
     all_appliances : pd.DataFrame
-        columns names are the appliance names
+        Column names are the appliance names.
     """
     def __init__(self):
         self.input = None
