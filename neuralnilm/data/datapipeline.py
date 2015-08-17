@@ -10,42 +10,28 @@ class DataPipeline(object):
         self.num_seq_per_batch = num_seq_per_batch
         self.input_processing = input_processing
         self.target_processing = target_processing
-        self._shapes = None
 
     def get_batch(self, validation=False):
-        batch = Batch(**self.shapes)
+        batch = Batch()
+        input_sequences = []
+        target_sequences = []
         for i in range(self.num_seq_per_batch):
             seq = self.source.get_sequence(validation=validation)
             batch.all_appliances.append(seq.all_appliances)
-            batch.input_before_processing[i] = seq.input
-            batch.target_before_processing[i] = seq.target
+            input_sequences.append(seq.input[np.newaxis, :])
+            target_sequences.append(seq.target[np.newaxis, :])
 
-        batch.input_after_processing = self.apply_processing(
-            batch.input_before_processing, 'input')
-        batch.target_after_processing = self.apply_processing(
-            batch.target_before_processing, 'target')
+        batch.before_processing.input = np.concatenate(input_sequences)
+        batch.before_processing.target = np.concatenate(target_sequences)
+        del input_sequences
+        del target_sequences
+
+        batch.after_processing.input = self.apply_processing(
+            batch.before_processing.input, 'input')
+        batch.after_processing.target = self.apply_processing(
+            batch.before_processing.target, 'target')
 
         return batch
-
-    @property
-    def shapes(self):
-        if self._shapes is None:
-            seq = self.source.get_seq()
-            processed_input = self.apply_processing(
-                np.expand_dims(seq.input, axis=0), 'input')
-            processed_target = self.apply_processing(
-                np.expand_dims(seq.target, axis=0), 'target')
-            self._shapes = {
-                'input_shape_before_processing':
-                    (self.num_seq_per_batch,) + seq.input.shape,
-                'target_shape_before_processing':
-                    (self.num_seq_per_batch,) + seq.target.shape,
-                'input_shape_after_processing':
-                    (self.num_seq_per_batch,) + processed_input.shape[1:],
-                'target_shape_after_processing':
-                    (self.num_seq_per_batch,) + processed_target.shape[1:]
-            }
-        return self._shapes
 
     def apply_processing(self, data, net_input_or_target):
         """Applies `<input, target>_processing` to `data`.
