@@ -11,8 +11,8 @@ class Batch(object):
     """
     Attributes
     ----------
-    all_appliances : list of pd.DataFrames
-        One entry for each seq in batch
+    all_appliances : pd.DataFrame
+        2-level hierarchical column names: seq_i, appliance_name
     metadata : dict
     before_processing : BatchSeq
     after_processing : BatchSeq

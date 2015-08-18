@@ -17,3 +17,9 @@ def configure_logger(output_filename=None):
             logger.addHandler(fh)
         logger.addHandler(logging.StreamHandler(stream=stdout))
     logger.setLevel(logging.DEBUG)
+
+
+def flatten(_list):
+    """Flatten a 2D list to 1D"""
+    # From http://stackoverflow.com/a/952952
+    return [item for sublist in _list for item in sublist]

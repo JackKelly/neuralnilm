@@ -1,7 +1,8 @@
 from __future__ import print_function, division
+import numpy as np
 
 
-class Seq(object):
+class Sequence(object):
     """
     Attributes
     ----------
@@ -17,10 +18,13 @@ class Seq(object):
 
 
 class Source(object):
-    def get_seq(self):
+    def __init__(self, rng_seed=None):
+        self.rng = np.random.RandomState(rng_seed)
+
+    def get_sequence(self, validation=False):
         """
         Returns
         -------
-        seq : Seq
+        sequence : Sequence
         """
         raise NotImplementedError()
