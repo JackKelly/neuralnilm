@@ -3,26 +3,30 @@ import numpy as np
 
 import nilmtk
 from neuralnilm.utils import none_to_dict
+from .activationsgetter import ActivationsGetter
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-class NILMTKActivations(object):
+class NILMTKActivationsGetter(ActivationsGetter):
     def __init__(self, appliances, filename, buildings, sample_period,
                  window_per_building=None):
-
-        self.appliances = appliances
         self.filename = filename
         self.buildings = buildings
-        self.sample_period = sample_period
         self.window_per_building = none_to_dict(window_per_building)
         self.number_of_activations_loaded = {}
-
-    def _get_empty_activations_dict(self):
-        return {appliance: {} for appliance in self.appliances}
+        super(NILMTKActivationsGetter, self).__init__(
+            appliances=appliances, sample_period=sample_period)
 
     def load_activations(self):
+        """
+        Returns
+        -------
+        activations : dict
+            Structure example:
+            {'kettle': {'UK-DALE_building_1': [<activations>]}}
+        """
         dataset = nilmtk.DataSet(self.filename)
         activations = self._get_empty_activations_dict()
         self.number_of_activations_loaded = self._get_empty_activations_dict()
@@ -53,19 +57,3 @@ class NILMTKActivations(object):
 
         dataset.store.close()
         return activations
-
-    def _process_activations(self, activations):
-        for i, activation in enumerate(activations):
-            # tz_convert('UTC') is a workaround for Pandas bug #10117
-            tz = activation.index.tz.zone
-            activation = activation.tz_convert('UTC')
-            freq = "{:d}S".format(self.sample_period)
-            activation = activation.resample(freq)
-            activation.fillna(method='ffill', inplace=True)
-            activation.fillna(method='bfill', inplace=True)
-            activation = activation.tz_convert(tz)
-            activations[i] = activation.astype(np.float32)
-        return activations
-
-    def report(self):
-        return self.__dict__
