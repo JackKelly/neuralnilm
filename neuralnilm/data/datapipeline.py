@@ -1,8 +1,8 @@
 from __future__ import print_function, division
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from .batch import Batch
 from neuralnilm.utils import none_to_list
 
 
@@ -15,28 +15,13 @@ class DataPipeline(object):
         self.target_processing = none_to_list(target_processing)
 
     def get_batch(self, validation=False):
-        batch = Batch()
-        input_sequences = []
-        target_sequences = []
-        all_appliances = {}
-        for i in range(self.num_seq_per_batch):
-            seq = self.source.get_sequence(validation=validation)
-            all_appliances[i] = seq.all_appliances
-            input_sequences.append(seq.input[np.newaxis, :])
-            target_sequences.append(seq.target[np.newaxis, :])
-
-        batch.before_processing.input = np.concatenate(input_sequences)
-        batch.before_processing.target = np.concatenate(target_sequences)
-        del input_sequences
-        del target_sequences
-
+        batch = self.source.get_batch(
+            num_seq_per_batch=self.num_seq_per_batch, validation=validation)
         batch.after_processing.input = self.apply_processing(
             batch.before_processing.input, 'input')
         batch.after_processing.target = self.apply_processing(
             batch.before_processing.target, 'target')
 
-        batch.all_appliances = pd.concat(
-            all_appliances, axis=1, names=['sequence', 'appliance'])
         return batch
 
     def apply_processing(self, data, net_input_or_target):
@@ -87,3 +72,12 @@ class DataPipeline(object):
         processing_steps = getattr(self, attribute)
         assert isinstance(processing_steps, list)
         return processing_steps
+
+    def report(self):
+        report = deepcopy(self.__dict__)
+        report['source'] = self.source.report()
+        report['input_processing'] = [
+            processor.report() for processor in self.input_processing]
+        report['target_processing'] = [
+            processor.report() for processor in self.target_processing]
+        return {self.__class__.__name__: report}

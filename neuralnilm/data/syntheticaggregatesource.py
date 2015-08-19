@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from copy import copy
 import numpy as np
 import pandas as pd
 
@@ -57,6 +58,8 @@ class SyntheticAggregateSource(Source):
             all_appliances[appliance] = pd.Series(positioned_activation)
 
         seq.all_appliances = pd.DataFrame(all_appliances)
+        seq.input = seq.input[:, np.newaxis]
+        seq.target = seq.target[:, np.newaxis]
         return seq
 
     def _distractor_appliances(self):
@@ -122,3 +125,9 @@ class SyntheticAggregateSource(Source):
             space_after_activation = self.seq_length - len(activation)
             is_complete = 0 <= start_i <= space_after_activation
         return positioned_activation, is_complete
+
+    def report(self):
+        report = copy(self.__dict__)
+        report.pop('activations')
+        report.pop('rng')
+        return {self.__class__.__name__: report}

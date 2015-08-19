@@ -2,6 +2,8 @@ from __future__ import print_function, division
 import numpy as np
 import pandas as pd
 
+from .batch import Batch
+
 
 class Sequence(object):
     """
@@ -20,6 +22,7 @@ class Sequence(object):
 
 class Source(object):
     def __init__(self, rng_seed=None):
+        self.rng_seed = rng_seed
         self.rng = np.random.RandomState(rng_seed)
 
     def get_sequence(self, validation=False):
@@ -29,3 +32,25 @@ class Source(object):
         sequence : Sequence
         """
         raise NotImplementedError()
+
+    def report(self):
+        return {self.__class__.__name__: self.__dict__}
+
+    def get_batch(self, num_seq_per_batch, validation=False):
+        input_sequences = []
+        target_sequences = []
+        all_appliances = {}
+        for i in range(num_seq_per_batch):
+            seq = self.get_sequence(validation=validation)
+            all_appliances[i] = seq.all_appliances
+            input_sequences.append(seq.input[np.newaxis, :])
+            target_sequences.append(seq.target[np.newaxis, :])
+
+        batch = Batch()
+        batch.before_processing.input = np.concatenate(input_sequences)
+        del input_sequences
+        batch.before_processing.target = np.concatenate(target_sequences)
+        del target_sequences
+        batch.all_appliances = pd.concat(
+            all_appliances, axis=1, names=['sequence', 'appliance'])
+        return batch
