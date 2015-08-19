@@ -15,7 +15,10 @@ class DataProcess(Process):
             self._queue.put(batch)
 
     def get_batch(self, timeout=30):
-        return self._queue.get(timeout=timeout)
+        if self.is_alive():
+            return self._queue.get(timeout=timeout)
+        else:
+            raise RuntimeError("Process is not running!")
 
     def stop(self):
         self._empty_queue()
