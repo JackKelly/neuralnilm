@@ -29,9 +29,7 @@ class SyntheticAggregateSource(Source):
 
     def get_sequence(self, validation=False):
         assert not validation, "validation not implemented for this class"
-        seq = Sequence()
-        seq.input = np.zeros(self.seq_length, dtype=np.float32)
-        seq.target = np.zeros(self.seq_length, dtype=np.float32)
+        seq = Sequence(self.seq_length)
 
         # Target appliance
         if self.rng.binomial(n=1, p=self.target_inclusion_prob):
@@ -50,6 +48,11 @@ class SyntheticAggregateSource(Source):
         * add to seq.all_appliances DataFrame
         """
         return seq
+
+    def _distractor_appliances(self):
+        all_appliances = set(self.activations.keys())
+        distractor_appliances = all_appliances - set([self.target_appliance])
+        return list(distractor_appliances)
 
     def _select_activation(self, appliance):
         activations_per_model = self.activations[appliance]
@@ -99,5 +102,9 @@ class SyntheticAggregateSource(Source):
         else:
             positioned_activation = positioned_activation[:self.seq_length]
 
-        is_complete = 0 <= start_i <= max(self.seq_length - len(activation), 0)
+        if len(activation) > self.seq_length:
+            is_complete = False
+        else:
+            space_after_activation = self.seq_length - len(activation)
+            is_complete = 0 <= start_i <= space_after_activation
         return positioned_activation, is_complete

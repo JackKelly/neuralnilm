@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
+import pandas as pd
 
 
 class Sequence(object):
@@ -11,10 +12,10 @@ class Sequence(object):
     all_appliances : pd.DataFrame
         Column names are the appliance names.
     """
-    def __init__(self):
-        self.input = None
-        self.target = None
-        self.all_appliances = None
+    def __init__(self, shape):
+        self.input = np.zeros(shape, dtype=np.float32)
+        self.target = np.zeros(shape, dtype=np.float32)
+        self.all_appliances = pd.DataFrame()
 
 
 class Source(object):
