@@ -1,5 +1,6 @@
 from __future__ import print_function, division
 import numpy as np
+import pandas as pd
 
 from neuralnilm.data.source import Source, Sequence
 from neuralnilm.utils import flatten
@@ -30,23 +31,32 @@ class SyntheticAggregateSource(Source):
     def get_sequence(self, validation=False):
         assert not validation, "validation not implemented for this class"
         seq = Sequence(self.seq_length)
+        all_appliances = {}
 
         # Target appliance
         if self.rng.binomial(n=1, p=self.target_inclusion_prob):
             activation = self._select_activation(self.target_appliance)
             positioned_activation, is_complete = self._position_activation(
-                activation, is_target_appliance=True)
+                activation.values, is_target_appliance=True)
             seq.input += positioned_activation
+            all_appliances[self.target_appliance] = (
+                pd.Series(positioned_activation))
             if is_complete or self.include_incomplete_target_in_output:
                 seq.target += positioned_activation
 
         # Distractor appliances
-        """
-        TODO:
-        * loop through remaining (distractor) appliances
-        * add to seq.input
-        * add to seq.all_appliances DataFrame
-        """
+        distractor_appliances = [
+            appliance for appliance in self._distractor_appliances()
+            if self.rng.binomial(n=1, p=self.distractor_inclusion_prob)]
+
+        for appliance in distractor_appliances:
+            activation = self._select_activation(appliance)
+            positioned_activation, is_complete = self._position_activation(
+                activation.values, is_target_appliance=False)
+            seq.input += positioned_activation
+            all_appliances[appliance] = pd.Series(positioned_activation)
+
+        seq.all_appliances = pd.DataFrame(all_appliances)
         return seq
 
     def _distractor_appliances(self):
@@ -58,13 +68,17 @@ class SyntheticAggregateSource(Source):
         activations_per_model = self.activations[appliance]
         if self.uniform_prob_of_selecting_each_model:
             n_models = len(activations_per_model)
+            if n_models == 0:
+                raise RuntimeError("No appliance models for " + appliance)
             model_i = self.rng.randint(low=0, high=n_models)
             activations = activations_per_model.values()[model_i]
         else:
             activations = flatten(activations_per_model.values())
         n_activations = len(activations)
+        if n_activations == 0:
+            raise RuntimeError("No appliance activations for " + appliance)
         activation_i = self.rng.randint(low=0, high=n_activations)
-        activation = activations[activation_i].values
+        activation = activations[activation_i]
         return activation
 
     def _position_activation(self, activation, is_target_appliance):

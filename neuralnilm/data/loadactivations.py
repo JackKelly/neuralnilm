@@ -8,17 +8,22 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def load_nilmtk_activations(self, appliances, filename,
-                            buildings, sample_period,
-                            window_per_building=None):
+def load_nilmtk_activations(appliances, filename, buildings, sample_period,
+                            window_per_building=None, window=None):
     """
     Returns
     -------
     activations : dict
         Structure example:
         {'kettle': {'UK-DALE_building_1': [<activations>]}}
+        Each activation is a pd.Series with DatetimeIndex and
+        name == <appliance type>.
     """
-    window_per_building = none_to_dict(window_per_building)
+    assert not (window and window_per_building)
+    if window is None:
+        window_per_building = none_to_dict(window_per_building)
+    else:
+        window_per_building = {building_i: window for building_i in buildings}
     dataset = nilmtk.DataSet(filename)
     activations = {appliance: {} for appliance in appliances}
     for building_i in buildings:
@@ -39,12 +44,16 @@ def load_nilmtk_activations(self, appliances, filename,
             meter_activations = meter.get_activations()
             meter_activations = _process_activations(
                 meter_activations, sample_period)
-            activations[appliance][building_name] = meter_activations
+            if meter_activations:
+                activations[appliance][building_name] = meter_activations
             logger.info(
                 "Loaded {} {} activations from {}."
                 .format(len(meter_activations), appliance, building_name))
 
     dataset.store.close()
+    activations = {appliance: data
+                   for appliance, data in activations.iteritems()
+                   if data}
     return activations
 
 
@@ -58,5 +67,6 @@ def _process_activations(activations, sample_period):
         activation.fillna(method='ffill', inplace=True)
         activation.fillna(method='bfill', inplace=True)
         activation = activation.tz_convert(tz)
-        activations[i] = activation.astype(np.float32)
+        activation = activation.astype(np.float32)
+        activations[i] = activation
     return activations

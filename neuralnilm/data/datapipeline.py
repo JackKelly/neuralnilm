@@ -1,6 +1,9 @@
 from __future__ import print_function, division
 import numpy as np
+import pandas as pd
+
 from .batch import Batch
+from neuralnilm.utils import none_to_list
 
 
 class DataPipeline(object):
@@ -8,16 +11,17 @@ class DataPipeline(object):
                  input_processing=None, target_processing=None):
         self.source = source
         self.num_seq_per_batch = num_seq_per_batch
-        self.input_processing = input_processing
-        self.target_processing = target_processing
+        self.input_processing = none_to_list(input_processing)
+        self.target_processing = none_to_list(target_processing)
 
     def get_batch(self, validation=False):
         batch = Batch()
         input_sequences = []
         target_sequences = []
+        all_appliances = {}
         for i in range(self.num_seq_per_batch):
             seq = self.source.get_sequence(validation=validation)
-            batch.all_appliances.append(seq.all_appliances)
+            all_appliances[i] = seq.all_appliances
             input_sequences.append(seq.input[np.newaxis, :])
             target_sequences.append(seq.target[np.newaxis, :])
 
@@ -31,6 +35,8 @@ class DataPipeline(object):
         batch.after_processing.target = self.apply_processing(
             batch.before_processing.target, 'target')
 
+        batch.all_appliances = pd.concat(
+            all_appliances, axis=1, names=['sequence', 'appliance'])
         return batch
 
     def apply_processing(self, data, net_input_or_target):
