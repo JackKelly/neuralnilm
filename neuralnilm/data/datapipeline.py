@@ -14,9 +14,11 @@ class DataPipeline(object):
         self.input_processing = none_to_list(input_processing)
         self.target_processing = none_to_list(target_processing)
 
-    def get_batch(self, validation=False):
+    def get_batch(self, validation=False, enable_all_appliances=False):
         batch = self.source.get_batch(
-            num_seq_per_batch=self.num_seq_per_batch, validation=validation)
+            num_seq_per_batch=self.num_seq_per_batch,
+            validation=validation,
+            enable_all_appliances=enable_all_appliances)
         batch.after_processing.input = self.apply_processing(
             batch.before_processing.input, 'input')
         batch.after_processing.target = self.apply_processing(

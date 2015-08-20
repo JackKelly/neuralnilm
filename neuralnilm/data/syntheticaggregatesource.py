@@ -29,7 +29,7 @@ class SyntheticAggregateSource(Source):
             include_incomplete_target_in_output)
         super(SyntheticAggregateSource, self).__init__(rng_seed=rng_seed)
 
-    def get_sequence(self, validation=False):
+    def get_sequence(self, validation=False, enable_all_appliances=False):
         assert not validation, "validation not implemented for this class"
         seq = Sequence(self.seq_length)
         all_appliances = {}
@@ -40,8 +40,8 @@ class SyntheticAggregateSource(Source):
             positioned_activation, is_complete = self._position_activation(
                 activation.values, is_target_appliance=True)
             seq.input += positioned_activation
-            all_appliances[self.target_appliance] = (
-                pd.Series(positioned_activation))
+            if enable_all_appliances:
+                all_appliances[self.target_appliance] = positioned_activation
             if is_complete or self.include_incomplete_target_in_output:
                 seq.target += positioned_activation
 
@@ -55,11 +55,13 @@ class SyntheticAggregateSource(Source):
             positioned_activation, is_complete = self._position_activation(
                 activation.values, is_target_appliance=False)
             seq.input += positioned_activation
-            all_appliances[appliance] = pd.Series(positioned_activation)
+            if enable_all_appliances:
+                all_appliances[appliance] = positioned_activation
 
-        seq.all_appliances = pd.DataFrame(all_appliances)
         seq.input = seq.input[:, np.newaxis]
         seq.target = seq.target[:, np.newaxis]
+        if enable_all_appliances:
+            seq.all_appliances = pd.DataFrame(all_appliances)
         return seq
 
     def _distractor_appliances(self):

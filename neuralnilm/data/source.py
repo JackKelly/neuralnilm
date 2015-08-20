@@ -36,13 +36,17 @@ class Source(object):
     def report(self):
         return {self.__class__.__name__: self.__dict__}
 
-    def get_batch(self, num_seq_per_batch, validation=False):
+    def get_batch(self, num_seq_per_batch, validation=False,
+                  enable_all_appliances=False):
         input_sequences = []
         target_sequences = []
         all_appliances = {}
         for i in range(num_seq_per_batch):
-            seq = self.get_sequence(validation=validation)
-            all_appliances[i] = seq.all_appliances
+            seq = self.get_sequence(
+                validation=validation,
+                enable_all_appliances=enable_all_appliances)
+            if enable_all_appliances:
+                all_appliances[i] = seq.all_appliances
             input_sequences.append(seq.input[np.newaxis, :])
             target_sequences.append(seq.target[np.newaxis, :])
 
@@ -51,6 +55,7 @@ class Source(object):
         del input_sequences
         batch.before_processing.target = np.concatenate(target_sequences)
         del target_sequences
-        batch.all_appliances = pd.concat(
-            all_appliances, axis=1, names=['sequence', 'appliance'])
+        if enable_all_appliances:
+            batch.all_appliances = pd.concat(
+                all_appliances, axis=1, names=['sequence', 'appliance'])
         return batch
