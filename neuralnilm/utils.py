@@ -1,6 +1,7 @@
 from __future__ import print_function, division
 import logging
 from sys import stdout
+import csv
 import numpy as np
 import theano
 import theano.tensor as T
@@ -22,7 +23,8 @@ def configure_logger(output_filename=None):
             fh = logging.FileHandler(output_filename)
             fh.setFormatter(formatter)
             logger.addHandler(fh)
-        logger.addHandler(logging.StreamHandler(stream=stdout))
+        if not is_running_in_ipython_notebook():
+            logger.addHandler(logging.StreamHandler(stream=stdout))
     logger.setLevel(logging.DEBUG)
 
 
@@ -40,3 +42,26 @@ def sfloatX(data):
 def ndim_tensor(name, ndim, dtype=theano.config.floatX):
     tensor_type = T.TensorType(dtype=dtype, broadcastable=((False,) * ndim))
     return tensor_type(name=name)
+
+
+class ANSI:
+    # from dnouri/nolearn/nolearn/lasagne.py
+    BLUE = '\033[94m'
+    GREEN = '\033[32m'
+    ENDC = '\033[0m'
+
+
+def is_running_in_ipython_notebook():
+    """Returns True if code is running in an IPython notebook."""
+    # adapted from http://stackoverflow.com/a/24937408
+    try:
+        cfg = get_ipython().config
+        return 'jupyter' in cfg['IPKernelApp']['connection_file']
+    except NameError:
+        return False
+
+
+def write_csv_row(filename, row, mode='a'):
+    with open(filename, mode=mode) as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(row)
