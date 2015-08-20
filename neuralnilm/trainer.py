@@ -22,7 +22,7 @@ class Trainer(object):
                  repeat_callbacks=None):
         self.net = net
         self.data_pipeline = data_pipeline
-        self.validation_batch = self.data_pipeline.get_batch() #validation=True)
+        self.validation_batch = self.data_pipeline.get_batch(validation=True)
 
         def _loss_func(prediction, target):
             loss = loss_func(prediction, target)
@@ -44,50 +44,6 @@ class Trainer(object):
         self.training_costs = []
         self.validation_costs = []
         self.iteration = 0
-
-    @property
-    def train_func(self):
-        if self._train_func is None:
-            self._train_func = self._compile_train_func()
-        return self._train_func
-
-    @property
-    def validation_cost_func(self):
-        if self._validation_cost_func is None:
-            self._validation_cost_func = self._compile_validation_cost_func()
-        return self._validation_cost_func
-
-    def _compile_train_func(self):
-        logger.info("Compiling train function...")
-        network_input = self.net.symbolic_input()
-        train_output = self.net.symbolic_output(deterministic=False)
-        target_var = ndim_tensor(name='target', ndim=train_output.ndim)
-        train_loss = self.loss_func(train_output, target_var)
-        all_params = get_all_params(self.net.layers[-1], trainable=True)
-        updates = self.updates_func(
-            train_loss, all_params, learning_rate=self._learning_rate)
-        train_func = theano.function(
-            inputs=[network_input, target_var],
-            outputs=train_loss,
-            updates=updates,
-            on_unused_input='warn',
-            allow_input_downcast=True)
-        logger.info("Done compiling train function.")
-        return train_func
-
-    def _compile_validation_cost_func(self):
-        logger.info("Compiling validation cost function...")
-        network_input = self.net.symbolic_input()
-        deterministic_output = self.net.symbolic_output(deterministic=True)
-        target_var = ndim_tensor(name='target', ndim=deterministic_output.ndim)
-        validation_loss = self.loss_func(deterministic_output, target_var)
-        validation_cost_func = theano.function(
-            inputs=[network_input, target_var],
-            outputs=[validation_loss, deterministic_output],
-            on_unused_input='warn',
-            allow_input_downcast=True)
-        logger.info("Done compiling validation cost function.")
-        return validation_cost_func
 
     @property
     def learning_rate(self):
@@ -116,7 +72,7 @@ class Trainer(object):
     def _run_train_iteration(self):
         # Training
         self.train_batch = self.data_thread.get_batch()
-        train_cost = self.train_func(
+        train_cost = self._get_train_func()(
             self.train_batch.after_processing.input,
             self.train_batch.after_processing.target)
         self.training_costs.append(train_cost.flatten()[0])
@@ -133,4 +89,41 @@ class Trainer(object):
         run_callbacks(callbacks)
 
     def validate(self):
-        pass
+        validation_cost = self._get_validation_cost_func()(
+            self.validation_batch.after_processing.input,
+            self.validation_batch.after_processing.target)
+        self.validation_costs.append(validation_cost.flatten()[0])
+
+    def _get_train_func(self):
+        if self._train_func is None:
+            self._train_func = self._compile_cost_func(validation=False)
+        return self._train_func
+
+    def _get_validation_cost_func(self):
+        if self._validation_cost_func is None:
+            self._validation_cost_func = self._compile_cost_func(
+                validation=True)
+        return self._validation_cost_func
+
+    def _compile_cost_func(self, validation):
+        logger.info("Compiling " + ("validation" if validation else "train") +
+                    " cost function...")
+        network_input = self.net.symbolic_input()
+        network_output = self.net.symbolic_output(deterministic=validation)
+        target_var = ndim_tensor(name='target', ndim=network_output.ndim)
+        loss = self.loss_func(network_output, target_var)
+        if validation:
+            updates = None
+        else:
+            # Training
+            all_params = get_all_params(self.net.layers[-1], trainable=True)
+            updates = self.updates_func(
+                loss, all_params, learning_rate=self._learning_rate)
+        train_func = theano.function(
+            inputs=[network_input, target_var],
+            outputs=loss,
+            updates=updates,
+            on_unused_input='warn',
+            allow_input_downcast=True)
+        logger.info("Done compiling cost function.")
+        return train_func

@@ -2,9 +2,11 @@ from __future__ import print_function, division
 from copy import copy
 import numpy as np
 import pandas as pd
-
 from neuralnilm.data.source import Source, Sequence
 from neuralnilm.utils import flatten
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SyntheticAggregateSource(Source):
@@ -27,10 +29,14 @@ class SyntheticAggregateSource(Source):
         self.allow_incomplete_distractors = allow_incomplete_distractors
         self.include_incomplete_target_in_output = (
             include_incomplete_target_in_output)
+        self.issued_validation_warning = False
         super(SyntheticAggregateSource, self).__init__(rng_seed=rng_seed)
 
     def get_sequence(self, validation=False, enable_all_appliances=False):
-        assert not validation, "validation not implemented for this class"
+        if validation and not self.issued_validation_warning:
+            logger.warn(
+                "validation not implemented for SyntheticAggregateSource!")
+            self.issued_validation_warning = True
         seq = Sequence(self.seq_length)
         all_appliances = {}
 
