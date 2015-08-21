@@ -36,14 +36,14 @@ class Source(object):
     def report(self):
         return {self.__class__.__name__: self.__dict__}
 
-    def get_batch(self, num_seq_per_batch, validation=False,
+    def get_batch(self, num_seq_per_batch, fold='train',
                   enable_all_appliances=False):
         input_sequences = []
         target_sequences = []
         all_appliances = {}
         for i in range(num_seq_per_batch):
             seq = self.get_sequence(
-                validation=validation,
+                fold=fold,
                 enable_all_appliances=enable_all_appliances)
             if enable_all_appliances:
                 all_appliances[i] = seq.all_appliances
@@ -51,6 +51,7 @@ class Source(object):
             target_sequences.append(seq.target[np.newaxis, :])
 
         batch = Batch()
+        batch.metadata['fold'] = fold
         batch.before_processing.input = np.concatenate(input_sequences)
         del input_sequences
         batch.before_processing.target = np.concatenate(target_sequences)

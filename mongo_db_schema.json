@@ -1,0 +1,202 @@
+'scores': {
+    'train_scores': [0.1E-2, 0.1E-3],
+    'train_batch_source': [0, 1], # for 'synthetic_aggregate' or 'real_aggregate',
+    'batch_source_labels': ['synethtic_aggregate', 'real_aggregate'],
+    'validation_scores': {
+	'validation_interval': 10,
+	'synthetic_aggregate_data': {
+	    'train': {
+		'regression_metrics': {
+		    'mse': [0.1E-2, 0.1E-3],
+		    'energy_correctly_assigned': [],
+		},
+		'2_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		},
+		'3_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		}
+	    },
+	    'unseen_appliances': {
+		'regression_metrics': {
+		    'mse': [0.1E-2, 0.1E-3],
+		    'energy_correctly_assigned': [],
+		},
+		'2_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		},
+		'3_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		}
+	    },
+	    'unseen_activations_of_seen_appliances': {
+		'regression_metrics': {
+		    'mse': [0.1E-2, 0.1E-3],
+		    'energy_correctly_assigned': [],
+		},
+		'2_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		},
+		'3_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		}
+	    }
+	},
+	'real_aggregate_data': {
+	    'train': {
+		'regression_metrics': {
+		    'mse': [0.1E-2, 0.1E-3],
+		    'energy_correctly_assigned': [],
+		},
+		'2_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		},
+		'3_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		}
+	    },
+	    'unseen_appliances': {
+		'regression_metrics': {
+		    'mse': [0.1E-2, 0.1E-3],
+		    'energy_correctly_assigned': [],
+		},
+		'2_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		},
+		'3_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		}
+	    },
+	    'unseen_activations_of_seen_appliances': {
+		'regression_metrics': {
+		    'mse': [0.1E-2, 0.1E-3],
+		    'energy_correctly_assigned': [],
+		},
+		'2_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		},
+		'3_state_classification_metrics': {
+		    'f1': [],
+		    'precision': [],
+		    'recall': []
+		}
+	    }
+	}
+    },
+    'disaggregation_scores': {
+	'iterations': [0, 1000],
+	'unseen_appliances': {
+	    'raw_net_output': {
+		'regression_metrics': {
+		    'mse': [0.005, 0.00004],  # Should include MSE even if net objective is MSE
+		    'energy_correctly_assigned': [0.4, 0.5]
+		},
+		'2_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		},
+		'3_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		}
+	    },
+	    'after_post_processing': {
+		'regression_metrics': {
+		    'mse': [0.005, 0.00004],
+		    'energy_correctly_assigned': [0.4, 0.5]
+		},
+		'2_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		},
+		'3_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		}
+	    }
+	},
+	'unseen_activations_of_seen_appliances': {
+	    'raw_net_output': {
+		'regression_metrics': {
+		    'mse': [0.005, 0.00004],
+		    'energy_correctly_assigned': [0.4, 0.5]
+		},
+		'2_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		},
+		'3_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		}
+	    },
+	    'after_post_processing': {
+		'regression_metrics': {
+		    'mse': [0.005, 0.00004],
+		    'energy_correctly_assigned': [0.4, 0.5]
+		},
+		'2_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		},
+		'3_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		}
+	    }
+	},
+	'seen_activations': {
+	    'raw_net_output': {
+		'regression_metrics': {
+		    'mse': [0.005, 0.00004],
+		    'energy_correctly_assigned': [0.4, 0.5]
+		},
+		'2_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		},
+		'3_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		}
+	    },
+	    'after_post_processing': {
+		'regression_metrics': {
+		    'mse': [0.005, 0.00004],
+		    'energy_correctly_assigned': [0.4, 0.5]
+		},
+		'2_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		},
+		'3_state_classification_metrics': {
+		    'f1': [0.5, 0.6],
+		    'precision': [0.4. 0.5]
+		}
+	    }
+	}
+    }    
+}
+

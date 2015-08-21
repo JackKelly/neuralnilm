@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from neuralnilm.data.source import Source, Sequence
 from neuralnilm.utils import flatten
+from neuralnilm.consts import DATA_FOLD_NAMES
 
 import logging
 logger = logging.getLogger(__name__)
@@ -29,20 +30,15 @@ class SyntheticAggregateSource(Source):
         self.allow_incomplete_distractors = allow_incomplete_distractors
         self.include_incomplete_target_in_output = (
             include_incomplete_target_in_output)
-        self.issued_validation_warning = False
         super(SyntheticAggregateSource, self).__init__(rng_seed=rng_seed)
 
-    def get_sequence(self, validation=False, enable_all_appliances=False):
-        if validation and not self.issued_validation_warning:
-            logger.warn(
-                "validation not implemented for SyntheticAggregateSource!")
-            self.issued_validation_warning = True
+    def get_sequence(self, fold='train', enable_all_appliances=False):
         seq = Sequence(self.seq_length)
         all_appliances = {}
 
         # Target appliance
         if self.rng.binomial(n=1, p=self.target_inclusion_prob):
-            activation = self._select_activation(self.target_appliance)
+            activation = self._select_activation(fold, self.target_appliance)
             positioned_activation, is_complete = self._position_activation(
                 activation.values, is_target_appliance=True)
             seq.input += positioned_activation
@@ -53,11 +49,11 @@ class SyntheticAggregateSource(Source):
 
         # Distractor appliances
         distractor_appliances = [
-            appliance for appliance in self._distractor_appliances()
+            appliance for appliance in self._distractor_appliances(fold)
             if self.rng.binomial(n=1, p=self.distractor_inclusion_prob)]
 
         for appliance in distractor_appliances:
-            activation = self._select_activation(appliance)
+            activation = self._select_activation(fold, appliance)
             positioned_activation, is_complete = self._position_activation(
                 activation.values, is_target_appliance=False)
             seq.input += positioned_activation
@@ -70,13 +66,17 @@ class SyntheticAggregateSource(Source):
             seq.all_appliances = pd.DataFrame(all_appliances)
         return seq
 
-    def _distractor_appliances(self):
-        all_appliances = set(self.activations.keys())
+    def _distractor_appliances(self, fold):
+        all_appliances = set(self.activations[fold].keys())
         distractor_appliances = all_appliances - set([self.target_appliance])
         return list(distractor_appliances)
 
-    def _select_activation(self, appliance):
-        activations_per_model = self.activations[appliance]
+    def _select_activation(self, fold, appliance):
+        if fold not in DATA_FOLD_NAMES:
+            raise ValueError("`fold` must be one of '{}' not '{}'."
+                             .format(DATA_FOLD_NAMES, fold))
+
+        activations_per_model = self.activations[fold][appliance]
         if self.uniform_prob_of_selecting_each_model:
             n_models = len(activations_per_model)
             if n_models == 0:

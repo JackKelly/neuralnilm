@@ -12,6 +12,7 @@ from .utils import sfloatX, ndim_tensor
 from neuralnilm.data.datathread import DataThread
 from neuralnilm.utils import ANSI, write_csv_row
 from neuralnilm.plot.costplotter import CostPlotter
+from neuralnilm.consts import DATA_FOLD_NAMES
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,7 +29,9 @@ class Trainer(object):
                  repeat_callbacks=None):
         self.net = net
         self.data_pipeline = data_pipeline
-        self.validation_batch = self.data_pipeline.get_batch(validation=True)
+        self.batches = {
+            fold: self.data_pipeline.get_batch(fold=fold)
+            for fold in DATA_FOLD_NAMES}
         self.path = path
 
         def _loss_func(prediction, target):
@@ -48,8 +51,7 @@ class Trainer(object):
         # Training and validation state
         self._train_func = None
         self._validation_cost_func = None
-        self.training_costs = []
-        self.validation_costs = []
+        self.costs = {fold: [] for fold in DATA_FOLD_NAMES}
         self.iteration = 0
 
     @property
@@ -74,7 +76,7 @@ class Trainer(object):
         self.cost_plotter.start()
         self.time = time()
         while self.iteration != num_iterations:
-            self.iteration = len(self.training_costs)
+            self.iteration = len(self.costs['train'])
             try:
                 self._run_train_iteration()
             except Exception as exception:
@@ -87,12 +89,13 @@ class Trainer(object):
 
     def _run_train_iteration(self):
         # Training
-        self.train_batch = self.data_thread.get_batch()
+        batch = self.data_thread.get_batch(fold='train')
         train_cost = self._get_train_func()(
-            self.train_batch.after_processing.input,
-            self.train_batch.after_processing.target)
+            batch.after_processing.input,
+            batch.after_processing.target)
+        self.batches['train'] = batch
         train_cost = train_cost.flatten()[0]
-        self.training_costs.append(train_cost)
+        self.costs['train'].append(train_cost)
         write_csv_row(join(self.path, 'training_costs.csv'),
                       ["{:.6E}".format(train_cost)])
         if np.isnan(train_cost):
@@ -120,7 +123,9 @@ class Trainer(object):
 
     def _print_costs_header(self):
         print("""
- Update |  Train cost  |  Valid cost  |  Train / Val  | Secs per update
+        | ------------------- COSTS ------------------|
+ Update |    Train     | Unseen actvs | Unseen appl.s | Secs per update
+        |              | of seen appl |               |
 --------|--------------|--------------|---------------|----------------\
 """)
 
