@@ -1,202 +1,120 @@
-'scores': {
-    'train_scores': [0.1E-2, 0.1E-3],
-    'train_batch_source': [0, 1], # for 'synthetic_aggregate' or 'real_aggregate',
-    'batch_source_labels': ['synethtic_aggregate', 'real_aggregate'],
-    'validation_scores': {
-	'validation_interval': 10,
-	'synthetic_aggregate_data': {
-	    'train': {
-		'regression_metrics': {
-		    'mse': [0.1E-2, 0.1E-3],
-		    'energy_correctly_assigned': [],
-		},
-		'2_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		},
-		'3_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		}
+experiment = db.neuralnilm_experiments.e1
+
+experiment
+{
+    'sources': [
+	{'_id': 0,
+	 'name': 'SyntheticAggregateSource',
+	 'n_train_activations': {'fridge': 100, 'tv': 50},
+	 'input_stats': {'mean': 0.4, 'std': 0.5}
+	}
+    ],
+    'trainer': {
+	'loss_function': 'mse',
+	'update_function': 'NAG'
+    },
+    'versions': {
+	'theano': '0.7.0',
+	'python': '2.7.10',
+	'lasagne': '0.0.1',
+	'neuralnilm': '2015-01-01'
+    }
+}
+
+experiment.model
+{
+    '_id': 0, # iteration
+    'layers': [
+	{'type': 'Input', 'output_shape': (1, 2, 4)},
+	{'type': 'Dense', 'output_shape': (1, 2, 4)},
+	{'type': 'Concat', 'input_layers': [0, 1],
+	 'concat_axis': 0, 'output_shape': (2, 2, 4)}
+    ],
+    'n_trainable_parameters': 10000
+}
+
+experiment.learning_rates
+{
+    '_id': 0, # iteration
+    'rate': 0.001
+}
+
+experiment.scores.train
+{
+    '_id': 0,  # iteration
+    'loss': 0.1E-3,
+    'source_id': 0
+}
+
+experiment.scores.validation
+{
+    '_id': 0,  # iteration
+    'SyntheticAggregateSource': {    
+	'train': {
+	    'regression_metrics': {
+		'mse': 0.1E-2,
+		'energy_correctly_assigned': 0.1E-4,
 	    },
-	    'unseen_appliances': {
-		'regression_metrics': {
-		    'mse': [0.1E-2, 0.1E-3],
-		    'energy_correctly_assigned': [],
-		},
-		'2_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		},
-		'3_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		}
+	    '2_state_classification_metrics': {
+		'f1': 0.1,
+		'precision': 0.1,
+		'recall': 0.1
 	    },
-	    'unseen_activations_of_seen_appliances': {
-		'regression_metrics': {
-		    'mse': [0.1E-2, 0.1E-3],
-		    'energy_correctly_assigned': [],
-		},
-		'2_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		},
-		'3_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		}
+	    '3_state_classification_metrics': {
+		'f1': 0.2,
+		'precision': 0.3,
+		'recall': 0.4
 	    }
 	},
-	'real_aggregate_data': {
-	    'train': {
-		'regression_metrics': {
-		    'mse': [0.1E-2, 0.1E-3],
-		    'energy_correctly_assigned': [],
-		},
-		'2_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		},
-		'3_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		}
+	'unseen_appliances': {
+            # same as 'train'
+	},
+	'unseen_activations_of_seen_appliances': {
+            # same as 'train'
+	}
+    },
+    'RealAggregateSource': {
+	# Same as SyntheticAggregateSource
+    }
+}
+
+experiment.scores.disaggregation
+{
+    '_id': 0,
+    'unseen_appliances': {
+	'raw_net_output': {
+	    'regression_metrics': {
+		'mse': 0.005,  # Should include MSE even if net objective is MSE
+		'energy_correctly_assigned': 0.4
 	    },
-	    'unseen_appliances': {
-		'regression_metrics': {
-		    'mse': [0.1E-2, 0.1E-3],
-		    'energy_correctly_assigned': [],
-		},
-		'2_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		},
-		'3_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		}
+	    '2_state_classification_metrics': {
+		'f1': 0.5,
+		'precision': 0.4
 	    },
-	    'unseen_activations_of_seen_appliances': {
-		'regression_metrics': {
-		    'mse': [0.1E-2, 0.1E-3],
-		    'energy_correctly_assigned': [],
-		},
-		'2_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		},
-		'3_state_classification_metrics': {
-		    'f1': [],
-		    'precision': [],
-		    'recall': []
-		}
+	    '3_state_classification_metrics': {
+		'f1': 0.5,
+		'precision': 0.5
+	    }
+	},
+	'after_post_processing': {
+	    'regression_metrics': {
+		'mse': 0.005,
+		'energy_correctly_assigned': 0.4
+	    },
+	    '2_state_classification_metrics': {
+		'f1': 0.5,
+		'precision': 0.4
+	    },
+	    '3_state_classification_metrics': {
+		'f1': 0.5,
+		'precision': 0.4
 	    }
 	}
     },
-    'disaggregation_scores': {
-	'iterations': [0, 1000],
-	'unseen_appliances': {
-	    'raw_net_output': {
-		'regression_metrics': {
-		    'mse': [0.005, 0.00004],  # Should include MSE even if net objective is MSE
-		    'energy_correctly_assigned': [0.4, 0.5]
-		},
-		'2_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		},
-		'3_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		}
-	    },
-	    'after_post_processing': {
-		'regression_metrics': {
-		    'mse': [0.005, 0.00004],
-		    'energy_correctly_assigned': [0.4, 0.5]
-		},
-		'2_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		},
-		'3_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		}
-	    }
-	},
-	'unseen_activations_of_seen_appliances': {
-	    'raw_net_output': {
-		'regression_metrics': {
-		    'mse': [0.005, 0.00004],
-		    'energy_correctly_assigned': [0.4, 0.5]
-		},
-		'2_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		},
-		'3_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		}
-	    },
-	    'after_post_processing': {
-		'regression_metrics': {
-		    'mse': [0.005, 0.00004],
-		    'energy_correctly_assigned': [0.4, 0.5]
-		},
-		'2_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		},
-		'3_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		}
-	    }
-	},
-	'seen_activations': {
-	    'raw_net_output': {
-		'regression_metrics': {
-		    'mse': [0.005, 0.00004],
-		    'energy_correctly_assigned': [0.4, 0.5]
-		},
-		'2_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		},
-		'3_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		}
-	    },
-	    'after_post_processing': {
-		'regression_metrics': {
-		    'mse': [0.005, 0.00004],
-		    'energy_correctly_assigned': [0.4, 0.5]
-		},
-		'2_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		},
-		'3_state_classification_metrics': {
-		    'f1': [0.5, 0.6],
-		    'precision': [0.4. 0.5]
-		}
-	    }
-	}
-    }    
+    'unseen_activations_of_seen_appliances': {
+	# same as above
+    },
+    'seen_activations': {
+	# same as above
+    }
 }
-

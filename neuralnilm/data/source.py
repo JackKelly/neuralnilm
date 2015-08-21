@@ -52,6 +52,7 @@ class Source(object):
 
         batch = Batch()
         batch.metadata['fold'] = fold
+        batch.metadata['source_name'] = self.__class__.__name__
         batch.before_processing.input = np.concatenate(input_sequences)
         del input_sequences
         batch.before_processing.target = np.concatenate(target_sequences)

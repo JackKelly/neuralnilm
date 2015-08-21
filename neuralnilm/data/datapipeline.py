@@ -7,15 +7,17 @@ from neuralnilm.utils import none_to_list
 
 
 class DataPipeline(object):
-    def __init__(self, source, num_seq_per_batch,
+    def __init__(self, sources, num_seq_per_batch,
                  input_processing=None, target_processing=None):
-        self.source = source
+        self.sources = sources
         self.num_seq_per_batch = num_seq_per_batch
         self.input_processing = none_to_list(input_processing)
         self.target_processing = none_to_list(target_processing)
 
-    def get_batch(self, fold='train', enable_all_appliances=False):
-        batch = self.source.get_batch(
+    def get_batch(self, fold='train', enable_all_appliances=False,
+                  source_id=0):
+        # TODO: DataPipeline will combine sources        
+        batch = self.sources[source_id].get_batch(
             num_seq_per_batch=self.num_seq_per_batch,
             fold=fold,
             enable_all_appliances=enable_all_appliances)
@@ -23,7 +25,7 @@ class DataPipeline(object):
             batch.before_processing.input, 'input')
         batch.after_processing.target = self.apply_processing(
             batch.before_processing.target, 'target')
-
+        batch.metadata['source_id'] = source_id
         return batch
 
     def apply_processing(self, data, net_input_or_target):
@@ -77,7 +79,9 @@ class DataPipeline(object):
 
     def report(self):
         report = deepcopy(self.__dict__)
-        report['source'] = self.source.report()
+        report.pop('sources')
+        for source in self.sources:
+            report.update(source.report())
         report['input_processing'] = [
             processor.report() for processor in self.input_processing]
         report['target_processing'] = [
