@@ -44,7 +44,6 @@ class Trainer(object):
         self.db = db
         self.experiment_id = experiment_id
         self._train_func = None
-        self.iteration = 0
         self.display = display
         self.metrics = metrics
 
@@ -78,16 +77,18 @@ class Trainer(object):
             logger.info(
                 "Iteration {:d}: Attempted to change learning rate to {:.1E}"
                 " but that is already the value!"
-                .format(self.iteration, rate))
+                .format(self.net.train_iterations, rate))
         else:
             logger.info(
                 "Iteration {:d}: Change learning rate to {:.1E}"
-                .format(self.iteration, rate))
+                .format(self.net.train_iterations, rate))
             self.db.experiments.find_one_and_update(
                 filter={'_id': self.experiment_id},
-                update={'$set':
-                        {'trainer.learning_rates.{:d}'.format(self.iteration):
-                         float(rate)}},
+                update={
+                    '$set':
+                    {'trainer.learning_rates.{:d}'
+                     .format(self.net.train_iterations):
+                     float(rate)}},
                 upsert=True
             )
             self._learning_rate.set_value(rate)
@@ -100,18 +101,22 @@ class Trainer(object):
         if self.display is not None:
             self.display.start()
         self.time = time()
-        while self.iteration != num_iterations:
+        while True:
             try:
                 self._run_train_iteration()
             except Exception as exception:
                 logger.exception(exception)
                 break
-            self.iteration += 1
+
+            if self.net.train_iterations == num_iterations:
+                break
+            else:
+                self.net.train_iterations += 1
         self.data_thread.stop()
         if self.display is not None:
             self.display.stop()
         logger.info("Stopped training. Completed {} iterations."
-                    .format(self.iteration))
+                    .format(self.net.train_iterations))
 
     def _run_train_iteration(self):
         # Training
@@ -124,7 +129,7 @@ class Trainer(object):
         # Save training costs
         score = {
             'experiment_id': self.experiment_id,
-            'iteration': self.iteration,
+            'iteration': self.net.train_iterations,
             'loss': train_cost
         }
 
@@ -134,7 +139,7 @@ class Trainer(object):
 
         if np.isnan(train_cost):
             msg = "training cost is NaN at iteration {}!".format(
-                self.iteration)
+                self.net.train_iterations)
             logger.error(msg)
             raise TrainingError(msg)
 
@@ -143,17 +148,19 @@ class Trainer(object):
             for callback in df['function']:
                 callback(self)
         repeat_callbacks = self.repeat_callbacks[
-            (self.iteration % self.repeat_callbacks['iteration']) == 0]
+            (self.net.train_iterations %
+             self.repeat_callbacks['iteration']) == 0]
         run_callbacks(repeat_callbacks)
         callbacks = self.callbacks[
-            self.callbacks['iteration'] == self.iteration]
+            self.callbacks['iteration'] == self.net.train_iterations]
         run_callbacks(callbacks)
 
     def validate(self):
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
         all_scores = {
-            'experiment_id': self.experiment_id, 'iteration': self.iteration}
+            'experiment_id': self.experiment_id,
+            'iteration': self.net.train_iterations}
         for source_id, source in enumerate(sources):
             scores_for_source = {}
             for fold in DATA_FOLD_NAMES:

@@ -10,6 +10,7 @@ class Net(object):
     def __init__(self, output_layer):
         self.layers = get_all_layers(output_layer)
         self._deterministic_output_func = None
+        self.train_iterations = 0
 
     @property
     def deterministic_output_func(self):
