@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class Trainer(object):
-    def __init__(self, net, data_pipeline,
+    def __init__(self, net, data_pipeline, db, experiment_id,
                  loss_func=squared_error,
                  loss_aggregation_mode='mean',
                  updates_func=partial(nesterov_momentum, momentum=0.9),
@@ -27,11 +27,11 @@ class Trainer(object):
                  callbacks=None,
                  repeat_callbacks=None,
                  display=None,
-                 metrics=None,
-                 collection=None):
+                 metrics=None):
         """
         Parameters
         ----------
+        db : PyMongo database object for this experiment.
         callbacks : list of 2-tuples (<iteration>, <function>)
             Function must accept a single argument: this Trainer object.
         repeat_callbacks : list of 2-tuples (<iteration>, <function>)
@@ -39,14 +39,14 @@ class Trainer(object):
         display : neuralnilm.Display object
             For displaying and saving plots and data during training.
         metrics : neuralnilm.Metrics object
-        collection : PyMongo collection object for this experiment.
         """
         # Training and validation state
+        self.db = db
+        self.experiment_id = experiment_id
         self._train_func = None
         self.iteration = 0
         self.display = display
         self.metrics = metrics
-        self.collection = collection
 
         self.net = net
         self.data_pipeline = data_pipeline
@@ -83,10 +83,13 @@ class Trainer(object):
             logger.info(
                 "Iteration {:d}: Change learning rate to {:.1E}"
                 .format(self.iteration, rate))
-            self.collection.learning_rates.insert_one({
-                '_id': self.iteration,
-                'learning_rate': float(rate)
-            })
+            self.db.experiments.find_one_and_update(
+                filter={'_id': self.experiment_id},
+                update={'$set':
+                        {'trainer.learning_rates.{:d}'.format(self.iteration):
+                         float(rate)}},
+                upsert=True
+            )
             self._learning_rate.set_value(rate)
 
     def fit(self, num_iterations=None):
@@ -119,10 +122,15 @@ class Trainer(object):
         train_cost = float(train_cost.flatten()[0])
 
         # Save training costs
-        score = {'_id': self.iteration, 'loss': train_cost}
+        score = {
+            'experiment_id': self.experiment_id,
+            'iteration': self.iteration,
+            'loss': train_cost
+        }
+
         if 'source_id' in batch.metadata:
             score['source_id'] = batch.metadata['source_id']
-        self.collection.scores.train.insert_one(score)
+        self.db.train_scores.insert_one(score)
 
         if np.isnan(train_cost):
             msg = "training cost is NaN at iteration {}!".format(
@@ -144,7 +152,8 @@ class Trainer(object):
     def validate(self):
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
-        all_scores = {'_id': self.iteration}
+        all_scores = {
+            'experiment_id': self.experiment_id, 'iteration': self.iteration}
         for source_id, source in enumerate(sources):
             scores_for_source = {}
             for fold in DATA_FOLD_NAMES:
@@ -155,7 +164,7 @@ class Trainer(object):
                     output, batch.after_processing.target)
                 scores_for_source[fold] = metrics
             all_scores[batch.metadata['source_name']] = scores_for_source
-        self.collection.scores.validation.insert_one(all_scores)
+        self.db.validation_scores.insert_one(all_scores)
 
     def _get_train_func(self):
         if self._train_func is None:

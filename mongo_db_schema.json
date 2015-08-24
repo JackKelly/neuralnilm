@@ -1,7 +1,6 @@
-experiment = db.neuralnilm_experiments.e1
-
-experiment
+experiments
 {
+    '_id': '0', # experiment ID
     'sources': [
 	{'_id': 0,
 	 'name': 'SyntheticAggregateSource',
@@ -11,44 +10,43 @@ experiment
     ],
     'trainer': {
 	'loss_function': 'mse',
-	'update_function': 'NAG'
+	'update_function': 'NAG',
+	'learning_rates': {
+	    0: 0.001
+	}
     },
     'versions': {
 	'theano': '0.7.0',
 	'python': '2.7.10',
 	'lasagne': '0.0.1',
 	'neuralnilm': '2015-01-01'
+    },
+    'model': {
+	0: {
+	    'layers': [
+		{'type': 'Input', 'output_shape': (1, 2, 4)},
+		{'type': 'Dense', 'output_shape': (1, 2, 4)},
+		{'type': 'Concat', 'input_layers': [0, 1],
+		 'concat_axis': 0, 'output_shape': (2, 2, 4)}
+	    ],
+	    'n_trainable_parameters': 10000
+	}
     }
 }
 
-experiment.model
-{
-    '_id': 0, # iteration
-    'layers': [
-	{'type': 'Input', 'output_shape': (1, 2, 4)},
-	{'type': 'Dense', 'output_shape': (1, 2, 4)},
-	{'type': 'Concat', 'input_layers': [0, 1],
-	 'concat_axis': 0, 'output_shape': (2, 2, 4)}
-    ],
-    'n_trainable_parameters': 10000
-}
 
-experiment.learning_rates
+train_scores
 {
-    '_id': 0, # iteration
-    'rate': 0.001
-}
-
-experiment.scores.train
-{
-    '_id': 0,  # iteration
+    'experiment_id': 0,
+    'iteration': 1000,
     'loss': 0.1E-3,
     'source_id': 0
 }
 
-experiment.scores.validation
+validation_scores
 {
-    '_id': 0,  # iteration
+    'experiment_id': 0,
+    'iteration': 0,
     'SyntheticAggregateSource': {    
 	'train': {
 	    'regression_metrics': {
@@ -78,9 +76,10 @@ experiment.scores.validation
     }
 }
 
-experiment.scores.disaggregation
+disaggregation_scores
 {
-    '_id': 0,
+    'experiment_id': 0,
+    'iteration': 0,
     'unseen_appliances': {
 	'raw_net_output': {
 	    'regression_metrics': {
