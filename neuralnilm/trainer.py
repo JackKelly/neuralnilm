@@ -133,8 +133,8 @@ class Trainer(object):
             'loss': train_cost
         }
 
-        if 'source_id' in batch.metadata:
-            score['source_id'] = batch.metadata['source_id']
+        if 'source_name' in batch.metadata:
+            score['source_name'] = batch.metadata['source_name']
         self.db.train_scores.insert_one(score)
 
         if np.isnan(train_cost):
@@ -158,20 +158,21 @@ class Trainer(object):
     def validate(self):
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
-        all_scores = {
-            'experiment_id': self.experiment_id,
-            'iteration': self.net.train_iterations}
         for source_id, source in enumerate(sources):
-            scores_for_source = {}
             for fold in DATA_FOLD_NAMES:
                 batch = self.data_thread.data_pipeline.get_batch(
                     fold=fold, source_id=source_id)
                 output = output_func(batch.after_processing.input)
                 metrics = self.metrics.compute_metrics(
                     output, batch.after_processing.target)
-                scores_for_source[fold] = metrics
-            all_scores[batch.metadata['source_name']] = scores_for_source
-        self.db.validation_scores.insert_one(all_scores)
+                for scores in metrics:
+                    scores.update({
+                        'experiment_id': self.experiment_id,
+                        'iteration': self.net.train_iterations,
+                        'source_name': batch.metadata['source_name'],
+                        'fold': fold
+                    })
+                    self.db.validation_scores.insert_one(scores)
 
     def _get_train_func(self):
         if self._train_func is None:

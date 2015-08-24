@@ -30,7 +30,8 @@ experiments
 		 'concat_axis': 0, 'output_shape': (2, 2, 4)}
 	    ],
 	    'n_trainable_parameters': 10000
-	}
+	},
+	'train_iterations': 100
     }
 }
 
@@ -40,80 +41,48 @@ train_scores
     'experiment_id': 0,
     'iteration': 1000,
     'loss': 0.1E-3,
-    'source_id': 0
+    'source_name': 'SyntheticAggregateSource'
 }
 
 validation_scores
 {
     'experiment_id': 0,
     'iteration': 0,
-    'SyntheticAggregateSource': {    
-	'train': {
-	    'regression_metrics': {
-		'mse': 0.1E-2,
-		'energy_correctly_assigned': 0.1E-4,
-	    },
-	    '2_state_classification_metrics': {
-		'f1': 0.1,
-		'precision': 0.1,
-		'recall': 0.1
-	    },
-	    '3_state_classification_metrics': {
-		'f1': 0.2,
-		'precision': 0.3,
-		'recall': 0.4
-	    }
-	},
-	'unseen_appliances': {
-            # same as 'train'
-	},
-	'unseen_activations_of_seen_appliances': {
-            # same as 'train'
-	}
-    },
-    'RealAggregateSource': {
-	# Same as SyntheticAggregateSource
+    'source_name': 'SyntheticAggregateSource',
+    'fold': 'train', # or unseen_appliances or unseen_activations_of_seen_appliances
+    'metric_type': 'regression',
+    'scores': {
+	'mse': 0.1E-2,
+	'energy_correctly_assigned': 0.1E-4
     }
 }
 
-disaggregation_scores
+Or for classificaiton:
 {
     'experiment_id': 0,
     'iteration': 0,
-    'unseen_appliances': {
-	'raw_net_output': {
-	    'regression_metrics': {
-		'mse': 0.005,  # Should include MSE even if net objective is MSE
-		'energy_correctly_assigned': 0.4
-	    },
-	    '2_state_classification_metrics': {
-		'f1': 0.5,
-		'precision': 0.4
-	    },
-	    '3_state_classification_metrics': {
-		'f1': 0.5,
-		'precision': 0.5
-	    }
-	},
-	'after_post_processing': {
-	    'regression_metrics': {
-		'mse': 0.005,
-		'energy_correctly_assigned': 0.4
-	    },
-	    '2_state_classification_metrics': {
-		'f1': 0.5,
-		'precision': 0.4
-	    },
-	    '3_state_classification_metrics': {
-		'f1': 0.5,
-		'precision': 0.4
-	    }
-	}
-    },
-    'unseen_activations_of_seen_appliances': {
-	# same as above
-    },
-    'seen_activations': {
-	# same as above
+    'source_name': 'SyntheticAggregateSource',
+    'fold': 'train',
+    'num_states': 2,
+    'metric_type': 'classification',
+    'scores': {
+	'f1': 0.1,
+	'precision': 0.1,
+	'recall': 0.1
+    }
+}
+
+Or for disaggregation
+{
+    'experiment_id': 0,
+    'iteration': 0,
+    'source_name': 'raw_net_output',   # or 'after_post_processing'    
+    'fold': 'train',
+    'num_states': 2,
+    'metric_type': 'classification',
+    'scores': {
+	'f1': 0.1,
+	'precision': 0.1,
+	'recall': 0.1
     }
 }
