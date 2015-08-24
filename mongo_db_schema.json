@@ -9,7 +9,7 @@ experiments
 	}
     ],
     'trainer': {
-	'loss_function': 'mse',
+	'loss_function': 'mean_squared_error',
 	'update_function': 'NAG',
 	'learning_rates': {
 	    0: 0.001

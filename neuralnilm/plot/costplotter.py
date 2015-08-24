@@ -9,28 +9,33 @@ logger = logging.getLogger(__name__)
 
 
 class CostPlotter(Process):
-    def __init__(self, path='.'):
+    def __init__(self, database, experiment_id):
         super(CostPlotter, self).__init__()
-        self.path = path
-        self._stop = Event()
-        self._plot = Event()
+        self.database = database
+        self.experiment_id = experiment_id
+        self._stop_event = Event()
+        self._plot_event = Event()
 
     def run(self):
         logger.info("Starting CostPlotter.")
         try:
             while True:
-                self._plot.wait()
-                if self._stop.is_set():
+                self._plot_event.wait()
+                if self._stop_event.is_set():
                     break
                 self._draw_plot()
-                self._plot.clear()
+                self._plot_event.clear()
         except:
             logger.exception("")
         finally:
             logger.info("Stopping CostPlotter.")
 
     def _draw_plot(self):
-        training_costs = self._load_csv('training_costs.csv')
+        training_costs = self.database.train_scores.find(
+            filter={'experiment_id': self.experiment_id},
+            sort=[('iteration', pymongo.ASCENDING)],
+            projection=['iteration', 'loss']
+        )
         try:
             n_iterations = len(training_costs)
         except:
@@ -67,10 +72,10 @@ class CostPlotter(Process):
         return np.loadtxt(join(self.path, filename))
 
     def plot(self):
-        self._plot.set()
+        self._plot_event.set()
 
     def stop(self):
-        self._stop.set()
-        self._plot.set()
+        self._stop_event.set()
+        self._plot_event.set()
         self.terminate()
         self.join()

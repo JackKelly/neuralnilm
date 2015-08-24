@@ -20,6 +20,7 @@ METRICS = {
     ],
     'regression': [
         metrics.mean_absolute_error,
+        metrics.mean_squared_error,
         relative_error_in_total_energy
     ]
 }
