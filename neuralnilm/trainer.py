@@ -41,6 +41,13 @@ class Trainer(object):
         metrics : neuralnilm.Metrics object
         collection : PyMongo collection object for this experiment.
         """
+        # Training and validation state
+        self._train_func = None
+        self.iteration = 0
+        self.display = display
+        self.metrics = metrics
+        self.collection = collection
+
         self.net = net
         self.data_pipeline = data_pipeline
 
@@ -49,8 +56,9 @@ class Trainer(object):
             return aggregate(loss, mode=loss_aggregation_mode)
         self.loss_func = _loss_func
         self.updates_func = updates_func
-        self._learning_rate = theano.shared(
-            sfloatX(learning_rate), name='learning_rate')
+        # Set _learning_rate to -1 so when we set self.learning_rate
+        # with the second line, Trainer logs the initial LR.
+        self._learning_rate = theano.shared(sfloatX(-1), name='learning_rate')
         self.learning_rate = learning_rate
 
         # Callbacks
@@ -58,13 +66,6 @@ class Trainer(object):
             return pd.DataFrame(lst, columns=['iteration', 'function'])
         self.callbacks = callbacks_dataframe(callbacks)
         self.repeat_callbacks = callbacks_dataframe(repeat_callbacks)
-
-        # Training and validation state
-        self._train_func = None
-        self.iteration = 0
-        self.display = display
-        self.metrics = metrics
-        self.collection = collection
 
     @property
     def learning_rate(self):
@@ -74,17 +75,17 @@ class Trainer(object):
     def learning_rate(self, rate):
         rate = sfloatX(rate)
         if rate == self.learning_rate:
-            self.logger.info(
+            logger.info(
                 "Iteration {:d}: Attempted to change learning rate to {:.1E}"
                 " but that is already the value!"
                 .format(self.iteration, rate))
         else:
-            self.logger.info(
+            logger.info(
                 "Iteration {:d}: Change learning rate to {:.1E}"
                 .format(self.iteration, rate))
             self.collection.learning_rates.insert_one({
                 '_id': self.iteration,
-                'learning_rate': rate
+                'learning_rate': float(rate)
             })
             self._learning_rate.set_value(rate)
 
@@ -115,7 +116,7 @@ class Trainer(object):
         train_cost = self._get_train_func()(
             batch.after_processing.input,
             batch.after_processing.target)
-        train_cost = train_cost.flatten()[0]
+        train_cost = float(train_cost.flatten()[0])
 
         # Save training costs
         score = {'_id': self.iteration, 'loss': train_cost}
