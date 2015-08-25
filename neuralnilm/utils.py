@@ -57,7 +57,7 @@ def is_running_in_ipython_notebook():
     try:
         cfg = get_ipython().config
         return 'jupyter' in cfg['IPKernelApp']['connection_file']
-    except NameError:
+    except (NameError, TypeError):
         return False
 
 
@@ -65,3 +65,20 @@ def write_csv_row(filename, row, mode='a'):
     with open(filename, mode=mode) as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(row)
+
+
+def downsample(array, factor):
+    """
+    Parameters
+    ----------
+    array : 1D np.ndarray
+    factor : int
+    """
+    assert isinstance(factor, int)
+    if array.size % factor:
+        num_zeros_to_append = factor - (array.size % factor)
+        array = np.pad(
+            array, pad_width=(0, num_zeros_to_append), mode='reflect')
+    array = array.reshape(-1, factor)
+    downsampled = array.mean(axis=1)
+    return downsampled

@@ -8,12 +8,14 @@ class TestSyntheticAggregateSource:
         from neuralnilm.data.syntheticaggregatesource import SyntheticAggregateSource
         return SyntheticAggregateSource(
             activations={
-                'fridge': {
-                    'UK-DALE_building_1': ['a'] * 10,
-                    'Tracebase_building_1': ['b'] * 1
-                },
-                'kettle': {'UK-DALE_building_1': []},
-                'toaster': {'UK-DALE_building_1': []}
+                'train': {
+                    'fridge': {
+                        'UK-DALE_building_1': ['a'] * 10,
+                        'Tracebase_building_1': ['b'] * 1
+                    },
+                    'kettle': {'UK-DALE_building_1': []},
+                    'toaster': {'UK-DALE_building_1': []}
+                }
             },
             target_appliance='kettle',
             seq_length=128
@@ -21,14 +23,15 @@ class TestSyntheticAggregateSource:
 
     def test_distrator_appliances(self, synthetic_aggregate_source):
         source = synthetic_aggregate_source
-        distractors = set(source._distractor_appliances())
+        distractors = set(source._distractor_appliances(fold='train'))
         assert distractors == set(['fridge', 'toaster'])
 
     def get_number_of_activations(self, source):
         n_a = 0
         n_b = 0
         for i in range(1000):
-            activation = source._select_activation('fridge')
+            activation = source._select_activation(
+                fold='train', appliance='fridge')
             if activation == 'a':
                 n_a += 1
             elif activation == 'b':
@@ -43,10 +46,10 @@ class TestSyntheticAggregateSource:
 
         source.uniform_prob_of_selecting_each_model = False
         n_a, n_b = self.get_number_of_activations(source)
-        assert (n_a - n_b) > 800
+        assert (n_a - n_b) > 600
 
         with pytest.raises(RuntimeError):
-            source._select_activation('kettle')
+            source._select_activation(fold='train', appliance='kettle')
 
     def test_position_activation(self, synthetic_aggregate_source):
         import numpy as np
