@@ -105,17 +105,25 @@ class Monitor(object):
             key='source_id', filter={'experiment_id': self.experiment_id})
         fig, axes = plt.subplots(
             nrows=3, ncols=len(validation_sources), sharex=True, squeeze=False)
+        # Make some space on the right side for the extra y-axes.
+        fig.subplots_adjust(right=0.65)
         for col, source_id in enumerate(validation_sources):
             for row, fold in enumerate(DATA_FOLD_NAMES):
                 ax = axes[row, col]
-                self._plot_validation_scores_for_source_and_fold(
-                    ax=ax, source_id=source_id, fold=fold)
+                lines = self._plot_validation_scores_for_source_and_fold(
+                    ax=ax, source_id=source_id, fold=fold,
+                    show_axes_labels=(row == 0))
                 ax.set_title(fold)
                 if row == 2:
                     ax.set_xlabel('Iteration')
+        # plt.legend(handles=lines, loc=(-0.2, -0.5),
+        #            ncol=len(self.validation_metric_names), fontsize=9,
+        #            frameon=False)
+#        plt.tight_layout()
         plt.show()
 
-    def _plot_validation_scores_for_source_and_fold(self, ax, source_id, fold):
+    def _plot_validation_scores_for_source_and_fold(self, ax, source_id, fold,
+                                                    show_axes_labels):
         fields = ['iteration'] + ['scores.' + metric_name for metric_name in
                                   self.validation_metric_names]
         monary = Monary()
@@ -136,8 +144,53 @@ class Monitor(object):
                 enumerate(self.validation_metric_names)}
         df = pd.DataFrame(data, index=index)
         df = self._downsample(df)
-        df.plot(ax=ax, legend=False)
-        self._last_iteration_processed['validation'] = result[0][-1]
+
+        # Create multiple independent axes.  Adapted from Joe Kington's answer:
+        # http://stackoverflow.com/a/7734614
+
+        # Colors
+        cmap = plt.get_cmap('gnuplot')
+        n = len(self.validation_metric_names)
+        colors = [cmap(i) for i in np.linspace(0, 1, n)]
+
+        # Twin the x-axis to make independent y-axes.
+        axes = [ax]
+        for metric_name in self.validation_metric_names[1:]:
+            axes.append(ax.twinx())
+
+        for i, axis in enumerate(axes[2:]):
+            # To make the border of the right-most axis visible, we need to
+            # turn the frame on. This hides the other plots, however, so we
+            # need to turn its fill off.
+            axis.set_frame_on(True)
+            axis.patch.set_visible(False)
+
+            # Move the last y-axes spines over to the right by 20% of the width
+            # of the axes
+            axis.spines['right'].set_position(('axes', 1.1 + (0.1 * i)))
+
+        lines = []
+        for i, (axis, metric_name, color) in enumerate(
+                zip(axes, self.validation_metric_names, colors)):
+            axis.tick_params(axis='y', colors=color)
+            label = metric_name.replace("regression.", "")
+            label = label.replace("classification_", "")
+            label = label.replace("_", " ")
+            label = label.replace(".", " ")
+            label = label.replace(" ", "\n")
+            line, = axis.plot(
+                df.index, df[metric_name].values, color=color, label=label)
+            if show_axes_labels:
+                axis.set_ylabel(label, color=color, rotation=0, fontsize=8)
+                if i == 0:
+                    coords = (0.0, 1.1)
+                else:
+                    coords = (0.95 + (0.1 * i), 1.3)
+                axis.yaxis.set_label_coords(*coords)
+            lines.append(line)
+
+        self._last_iteration_processed['validation'] = index[-1]
+        return lines
 
     def _downsample(self, data):
         """Downsample `data` if necessary."""
