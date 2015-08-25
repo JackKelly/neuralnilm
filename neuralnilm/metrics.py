@@ -53,22 +53,16 @@ class Metrics(object):
 
         Returns
         -------
-        scores : list of dicts
-            [{
-                'metric_type': 'classification',
-                'num_states': 2,
-                'scores': {
+        scores : dict
+            {
+                'regression': {
+                    'mean_absolute_error': 0.5
+                },
+                'classification_2_state': {
                     'f1_score': 0.5,
                     'precision_score': 0.8
                 }
-            },
-            {
-                'metric_type': 'regression',
-                'scores': {
-                    'mean_absolute_error': 0.5
-                }
             }
-            ]
         """
         if output.shape != target.shape:
             raise ValueError("`output.shape` != `target.shape`")
@@ -80,19 +74,20 @@ class Metrics(object):
             flat_output[flat_output < self.state_boundaries[0]] = 0
             flat_target[flat_target < self.state_boundaries[0]] = 0
 
-        all_scores = []
+        all_scores = {}
 
         # Classification
         for num_states in range(2, len(self.state_boundaries)+2):
-            all_scores.append(self._get_classification_scores(
-                flat_output, flat_target, num_states))
+            metric_type = 'classification_{:d}_state'.format(num_states)
+            all_scores[metric_type] = self._get_classification_scores(
+                flat_output, flat_target, num_states)
 
         # Regression
-        regression_scores = {'metric_type': 'regression', 'scores': {}}
+        regression_scores = {}
         for metric in METRICS['regression']:
-            regression_scores['scores'][metric.__name__] = float(
+            regression_scores[metric.__name__] = float(
                 metric(flat_target, flat_output))
-        all_scores.append(regression_scores)
+        all_scores['regression'] = regression_scores
 
         return all_scores
 
@@ -111,8 +106,4 @@ class Metrics(object):
         for metric in METRICS['classification']:
             scores[metric.__name__] = float(metric(target_class, output_class))
 
-        return {
-            'num_states': num_states,
-            'metric_type': 'classification',
-            'scores': scores
-        }
+        return scores

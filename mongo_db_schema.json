@@ -41,48 +41,47 @@ train_scores
     'experiment_id': 0,
     'iteration': 1000,
     'loss': 0.1E-3,
-    'source_name': 'SyntheticAggregateSource'
+    'source_id': 0
 }
+
 
 validation_scores
 {
     'experiment_id': 0,
     'iteration': 0,
-    'source_name': 'SyntheticAggregateSource',
+    'source_id': 0,
     'fold': 'train', # or unseen_appliances or unseen_activations_of_seen_appliances
-    'metric_type': 'regression',
     'scores': {
-	'mse': 0.1E-2,
-	'energy_correctly_assigned': 0.1E-4
+	'regression': {
+	    'mse': 0.1E-2,
+	    'energy_correctly_assigned': 0.1E-4
+	},
+	'classification_2_state': {
+	    'f1_score': 0.1E-3
+	},
+	'classification_3_state': {
+	    'f1_score': 0.1E-2
+	}
     }
 }
 
-Or for classificaiton:
-{
-    'experiment_id': 0,
-    'iteration': 0,
-    'source_name': 'SyntheticAggregateSource',
-    'fold': 'train',
-    'num_states': 2,
-    'metric_type': 'classification',
-    'scores': {
-	'f1': 0.1,
-	'precision': 0.1,
-	'recall': 0.1
-    }
-}
 
-Or for disaggregation
+disaggregation_scores
 {
     'experiment_id': 0,
     'iteration': 0,
-    'source_name': 'raw_net_output',   # or 'after_post_processing'    
-    'fold': 'train',
-    'num_states': 2,
-    'metric_type': 'classification',
+    'source_id': 0,
+    'fold': 'train', # or unseen_appliances or unseen_activations_of_seen_appliances
     'scores': {
-	'f1': 0.1,
-	'precision': 0.1,
-	'recall': 0.1
+	'regression': {
+	    'mse': 0.1E-2,
+	    'energy_correctly_assigned': 0.1E-4
+	},
+	'classification_2_state': {
+	    'f1_score': 0.1E-3
+	},
+	'classification_3_state': {
+	    'f1_score': 0.1E-2
+	}
     }
 }

@@ -130,11 +130,10 @@ class Trainer(object):
         score = {
             'experiment_id': self.experiment_id,
             'iteration': self.net.train_iterations,
-            'loss': train_cost
+            'loss': train_cost,
+            'source_id': batch.metadata['source_id']
         }
 
-        if 'source_name' in batch.metadata:
-            score['source_name'] = batch.metadata['source_name']
         self.db.train_scores.insert_one(score)
 
         if np.isnan(train_cost):
@@ -163,16 +162,15 @@ class Trainer(object):
                 batch = self.data_thread.data_pipeline.get_batch(
                     fold=fold, source_id=source_id)
                 output = output_func(batch.after_processing.input)
-                metrics = self.metrics.compute_metrics(
+                scores = self.metrics.compute_metrics(
                     output, batch.after_processing.target)
-                for scores in metrics:
-                    scores.update({
-                        'experiment_id': self.experiment_id,
-                        'iteration': self.net.train_iterations,
-                        'source_name': batch.metadata['source_name'],
-                        'fold': fold
-                    })
-                    self.db.validation_scores.insert_one(scores)
+                self.db.validation_scores.insert_one({
+                    'experiment_id': self.experiment_id,
+                    'iteration': self.net.train_iterations,
+                    'source_id': batch.metadata['source_id'],
+                    'fold': fold,
+                    'scores': scores
+                })
 
     def _get_train_func(self):
         if self._train_func is None:
