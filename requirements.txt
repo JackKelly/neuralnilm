@@ -1,0 +1,21 @@
+cython
+ipdb
+ipython
+numpy
+matplotlib
+numexpr
+networkx
+pandas
+nose
+scipy
+scikit-learn
+hmmlearn
+coveralls
+coverage
+psycopg2
+pyparsing
+tables
+-e git+git@github.com:nilmtk/nilm_metadata.git#egg=nilm_metadata-master
+-e git+git@github.com:nilmtk/nilmtk.git#egg=nilmtk-master
+-e git+git@github.com:Theano/Theano.git#egg=Theano-master
+-e git+git@github.com:Lasagne/Lasagne.git#egg=Lasagne-master
