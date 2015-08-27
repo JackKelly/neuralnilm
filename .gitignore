@@ -64,3 +64,4 @@ target/
 
 # Data
 *.npysetup.csh
+setup.csh
