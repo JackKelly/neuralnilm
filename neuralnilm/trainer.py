@@ -130,7 +130,7 @@ class Trainer(object):
         run_menu = False
 
         try:
-            self._fit(num_iterations)
+            self._training_loop(num_iterations)
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt at iteration {}."
                         .format(self.net.train_iterations))
@@ -143,12 +143,15 @@ class Trainer(object):
         if run_menu:
             self._menu(num_iterations)
 
-    def _fit(self, num_iterations=None):
-        logger.info(
-            "Starting training for {} iterations.".format(num_iterations))
-        self.time = time()
+    def _training_loop(self, num_iterations=None):
+        logger.info("Starting training for {} iterations."
+                    .format(num_iterations))
+
+        print("   Update # |  Train cost  | Secs per update | Source ID")
+        print("------------|--------------|-----------------|-----------")
+
         while True:
-            self._run_train_iteration()
+            self._single_train_iteration()
             if self.net.train_iterations == num_iterations:
                 break
             else:
@@ -156,7 +159,7 @@ class Trainer(object):
         logger.info("Stopped training. Completed {} iterations."
                     .format(self.net.train_iterations))
 
-    def _run_train_iteration(self):
+    def _single_train_iteration(self):
         # Learning rate changes
         try:
             self.learning_rate = self.learning_rates[self.net.train_iterations]
@@ -164,11 +167,11 @@ class Trainer(object):
             pass
 
         # Training
+        time0 = time()
         batch = self.data_thread.get_batch()
-        train_cost = self._get_train_func()(
-            batch.after_processing.input,
-            batch.after_processing.target)
+        train_cost = self._get_train_func()(batch.input, batch.target)
         train_cost = float(train_cost.flatten()[0])
+        duration = time() - time0
 
         # Save training costs
         score = {
@@ -177,6 +180,10 @@ class Trainer(object):
             'loss': train_cost,
             'source_id': batch.metadata['source_id']
         }
+
+        print(" {:>10d} |  {:>10.6f}  |  {:>10.6f}     | {:>3d}".format(
+            self.net.train_iterations, train_cost,
+            duration, batch.metadata['source_id']))
 
         self.db.train_scores.insert_one(score)
 
@@ -276,7 +283,7 @@ class Trainer(object):
             elif selection == 'q':
                 sure = raw_input("Are you sure you want to quit [Y/n]? ")
                 if sure.lower() != 'n':
-                    return
+                    raise KeyboardInterrupt()
             elif selection == 'e':
                 new_epochs = raw_input("New number of epochs (or 'None'): ")
                 if new_epochs == 'None':

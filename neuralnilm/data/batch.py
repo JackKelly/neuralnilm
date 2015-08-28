@@ -22,3 +22,11 @@ class Batch(object):
         self.metadata = {}
         self.before_processing = BatchSeq()
         self.after_processing = BatchSeq()
+
+    @property
+    def input(self):
+        return self.after_processing.input
+
+    @property
+    def target(self):
+        return self.after_processing.target

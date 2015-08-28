@@ -36,9 +36,20 @@ def main():
 
     next_job = _get_next_job()
     while next_job:
-        _run_job(next_job)
-        _delete_completed_job()
-        next_job = _get_next_job()
+        try:
+            _run_job(next_job)
+        except KeyboardInterrupt:
+            delete_this_job = raw_input(
+                "Delete this job from job list [Y/n]? ").lower()
+            if delete_this_job != "n":
+                _delete_completed_job()
+            continue_running = raw_input(
+                "Continue running other experiments [N/y]? ").lower()
+            if continue_running != "y":
+                break
+        else:
+            _delete_completed_job()
+            next_job = _get_next_job()
 
 
 def _get_next_job():
