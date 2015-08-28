@@ -1,6 +1,6 @@
-experiments
+trained_nets
 {
-    '_id': '0', # experiment ID
+    '_id': 'e123_fridge',
     'sources': [
 	{'_id': 0,
 	 'name': 'SyntheticAggregateSource',
@@ -13,7 +13,8 @@ experiments
 	'update_function': 'NAG',
 	'learning_rates': {
 	    0: 0.001
-	}
+	},
+	'train_iterations_planned': 500
     },
     'versions': {
 	'theano': '0.7.0',
@@ -29,9 +30,9 @@ experiments
 		{'type': 'Concat', 'input_layers': [0, 1],
 		 'concat_axis': 0, 'output_shape': (2, 2, 4)}
 	    ],
-	    'n_trainable_parameters': 10000
+	    'num_trainable_parameters': 10000
 	},
-	'train_iterations': 100
+	'train_iterations_completed': 100
     }
 }
 

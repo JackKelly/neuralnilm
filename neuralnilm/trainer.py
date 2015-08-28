@@ -1,29 +1,32 @@
 from __future__ import print_function, division
 from functools import partial
-from os.path import join
+import os
 import numpy as np
 import pandas as pd
 import theano
 from time import time
+from pymongo import MongoClient
+
 from lasagne.updates import nesterov_momentum
 from lasagne.objectives import aggregate, squared_error
 from lasagne.layers.helper import get_all_params
 from .utils import sfloatX, ndim_tensor
 from neuralnilm.data.datathread import DataThread
-from neuralnilm.utils import ANSI, write_csv_row
-from neuralnilm.plot.costplotter import CostPlotter
 from neuralnilm.consts import DATA_FOLD_NAMES
+from neuralnilm.config import CONFIG
 
 import logging
 logger = logging.getLogger(__name__)
 
 
 class Trainer(object):
-    def __init__(self, net, data_pipeline, db, experiment_id,
+    def __init__(self, net, data_pipeline, experiment_id,
+                 mongo_host=None,
+                 mongo_db='neuralnilm',
                  loss_func=squared_error,
                  loss_aggregation_mode='mean',
                  updates_func=partial(nesterov_momentum, momentum=0.9),
-                 learning_rate=1e-2,
+                 learning_rates=None,
                  callbacks=None,
                  repeat_callbacks=None,
                  display=None,
@@ -31,34 +34,59 @@ class Trainer(object):
         """
         Parameters
         ----------
-        db : PyMongo database object for this experiment.
+        experiment_id : list of strings
+            concatenated together with an underscore.
+            Defines output path
+        mongo_host : Address of PyMongo database.
+            See http://docs.mongodb.org/manual/reference/connection-string/
         callbacks : list of 2-tuples (<iteration>, <function>)
             Function must accept a single argument: this Trainer object.
         repeat_callbacks : list of 2-tuples (<iteration>, <function>)
             Function must accept a single argument: this Trainer object.
+            For example, to run validation every 100 iterations, set
+            `repeat_callbacks=[(100, Trainer.validate)]`.
         display : neuralnilm.Display object
             For displaying and saving plots and data during training.
         metrics : neuralnilm.Metrics object
+            Run during `Trainer.validation()`
         """
+        # Database
+        mongo_client = MongoClient(mongo_host)
+        self.db = mongo_client[mongo_db]
+
         # Training and validation state
-        self.db = db
-        self.experiment_id = experiment_id
+        self.learning_rates = (
+            {0: 1E-2} if learning_rates is None else learning_rates)
+        self.experiment_id = "_".join(experiment_id)
         self._train_func = None
         self.display = display
         self.metrics = metrics
-
         self.net = net
         self.data_pipeline = data_pipeline
 
+        # Output path
+        self.output_path = os.path.join(
+            *([CONFIG['PATHS']['OUTPUT']] + experiment_id)
+        )
+        try:
+            os.makedirs(self.output_path)
+        except OSError as os_error:
+            if os_error.errno == 17:  # file exists
+                logger.info(str(os_error))
+            else:
+                raise
+
+        # Loss and updates
         def aggregated_loss_func(prediction, target):
             loss = loss_func(prediction, target)
             return aggregate(loss, mode=loss_aggregation_mode)
         self.loss_func = aggregated_loss_func
         self.updates_func = updates_func
+
+        # Learning rate
         # Set _learning_rate to -1 so when we set self.learning_rate
-        # with the second line, Trainer logs the initial LR.
+        # during the training loop, it will be logger correctly.
         self._learning_rate = theano.shared(sfloatX(-1), name='learning_rate')
-        self.learning_rate = learning_rate
 
         # Callbacks
         def callbacks_dataframe(lst):
@@ -119,6 +147,12 @@ class Trainer(object):
                     .format(self.net.train_iterations))
 
     def _run_train_iteration(self):
+        # Learning rate changes
+        try:
+            self.learning_rate = self.learning_rates[self.net.train_iterations]
+        except KeyError:
+            pass
+
         # Training
         batch = self.data_thread.get_batch()
         train_cost = self._get_train_func()(
