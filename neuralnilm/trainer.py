@@ -10,7 +10,7 @@ from pymongo import MongoClient
 from lasagne.updates import nesterov_momentum
 from lasagne.objectives import aggregate, squared_error
 from lasagne.layers.helper import get_all_params
-from .utils import sfloatX, ndim_tensor
+from .utils import sfloatX, ndim_tensor, ANSI
 from neuralnilm.data.datathread import DataThread
 from neuralnilm.consts import DATA_FOLD_NAMES
 from neuralnilm.config import CONFIG
@@ -63,6 +63,7 @@ class Trainer(object):
         self.metrics = metrics
         self.net = net
         self.data_pipeline = data_pipeline
+        self.min_train_cost = float("inf")
 
         # Output path
         self.output_path = os.path.join(
@@ -151,7 +152,11 @@ class Trainer(object):
         print("------------|--------------|-----------------|-----------")
 
         while True:
-            self._single_train_iteration()
+            try:
+                self._single_train_iteration()
+            except TrainingError:
+                break
+
             if self.net.train_iterations == num_iterations:
                 break
             else:
@@ -180,13 +185,20 @@ class Trainer(object):
             'loss': train_cost,
             'source_id': batch.metadata['source_id']
         }
-
-        print(" {:>10d} |  {:>10.6f}  |  {:>10.6f}     | {:>3d}".format(
-            self.net.train_iterations, train_cost,
-            duration, batch.metadata['source_id']))
-
         self.db.train_scores.insert_one(score)
 
+        # Print training costs
+        is_best = train_cost <= self.min_train_cost
+        if is_best:
+            self.min_train_cost = train_cost
+        print(" {:>10d} | {}{:>10.6f}{}  |  {:>10.6f}     | {:>3d}".format(
+            self.net.train_iterations,
+            ANSI.BLUE if is_best else "",
+            train_cost,
+            ANSI.ENDC if is_best else "",
+            duration, batch.metadata['source_id']))
+
+        # Handle NaN costs
         if np.isnan(train_cost):
             msg = "training cost is NaN at iteration {}!".format(
                 self.net.train_iterations)
