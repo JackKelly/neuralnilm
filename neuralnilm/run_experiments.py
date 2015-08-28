@@ -1,7 +1,7 @@
+#!/usr/bin/env python
 from __future__ import print_function, division
 from os.path import expanduser, isdir, exists
 import sys
-import subprocess
 from neuralnilm.config import CONFIG
 
 import logging

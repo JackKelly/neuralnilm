@@ -72,7 +72,7 @@ def run(root_experiment_name):
             """
 
             # Run!
-            trainer.fit(100)
+            trainer.fit(1000)
 
 
 # -------------  NETWORKS  ---------------

@@ -96,7 +96,7 @@ class Trainer(object):
 
     @property
     def learning_rate(self):
-        return self._learning_rate.get_value()
+        return self._learning_rate.get_value().flatten()[0]
 
     @learning_rate.setter
     def learning_rate(self, rate):
@@ -122,27 +122,37 @@ class Trainer(object):
             self._learning_rate.set_value(rate)
 
     def fit(self, num_iterations=None):
-        logger.info(
-            "Starting training for {} iterations.".format(num_iterations))
         self.data_thread = DataThread(self.data_pipeline)
         self.data_thread.start()
         if self.display is not None:
             self.display.start()
+
+        run_menu = False
+
+        try:
+            self._fit(num_iterations)
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt at iteration {}."
+                        .format(self.net.train_iterations))
+            run_menu = True
+        finally:
+            self.data_thread.stop()
+            if self.display is not None:
+                self.display.stop()
+
+        if run_menu:
+            self._menu(num_iterations)
+
+    def _fit(self, num_iterations=None):
+        logger.info(
+            "Starting training for {} iterations.".format(num_iterations))
         self.time = time()
         while True:
-            try:
-                self._run_train_iteration()
-            except Exception as exception:
-                logger.exception(exception)
-                break
-
+            self._run_train_iteration()
             if self.net.train_iterations == num_iterations:
                 break
             else:
                 self.net.train_iterations += 1
-        self.data_thread.stop()
-        if self.display is not None:
-            self.display.stop()
         logger.info("Stopped training. Completed {} iterations."
                     .format(self.net.train_iterations))
 
@@ -239,6 +249,50 @@ class Trainer(object):
             allow_input_downcast=True)
         logger.info("Done compiling cost function.")
         return train_func
+
+    def _menu(self, epochs):
+        # Print menu
+        print("")
+        print("------------------ OPTIONS ------------------")
+        print("d: Enter debugger.")
+        print("s: Save plots and params.")
+        print("q: Quit all experiments.")
+        print("e: Change number of epochs to train this net (currently {})."
+              .format(epochs))
+        print("c: Continue training.")
+        print("")
+
+        # Get input
+        selection_str = raw_input("Please enter one or more letters: ")
+        selection_str = selection_str.lower()
+
+        # Handle input
+        for selection in selection_str:
+            if selection == 'd':
+                import ipdb
+                ipdb.set_trace()
+            elif selection == 's':
+                self.net.save()
+            elif selection == 'q':
+                sure = raw_input("Are you sure you want to quit [Y/n]? ")
+                if sure.lower() != 'n':
+                    return
+            elif selection == 'e':
+                new_epochs = raw_input("New number of epochs (or 'None'): ")
+                if new_epochs == 'None':
+                    epochs = None
+                else:
+                    try:
+                        epochs = int(new_epochs)
+                    except:
+                        print("'{}' not an integer!".format(new_epochs))
+            elif selection == 'c':
+                break
+            else:
+                print("Selection '{}' not recognised!".format(selection))
+                break
+        print("Continuing training for {} epochs...".format(epochs))
+        self.fit(epochs)
 
 
 class TrainingError(Exception):
