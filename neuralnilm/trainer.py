@@ -50,10 +50,10 @@ class Trainer(object):
         self.net = net
         self.data_pipeline = data_pipeline
 
-        def _loss_func(prediction, target):
+        def aggregated_loss_func(prediction, target):
             loss = loss_func(prediction, target)
             return aggregate(loss, mode=loss_aggregation_mode)
-        self.loss_func = _loss_func
+        self.loss_func = aggregated_loss_func
         self.updates_func = updates_func
         # Set _learning_rate to -1 so when we set self.learning_rate
         # with the second line, Trainer logs the initial LR.

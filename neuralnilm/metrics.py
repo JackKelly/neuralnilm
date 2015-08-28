@@ -27,7 +27,7 @@ METRICS = {
 
 
 class Metrics(object):
-    def __init__(self, state_boundaries, clip_to_zero=True):
+    def __init__(self, state_boundaries, clip_to_zero=False):
         """
         Parameters
         ----------

@@ -50,24 +50,39 @@ class Monitor(object):
         )
         return bool(document)
 
-    def _get_mse(self, train_or_validation):
-        if train_or_validation == 'train':
-            collection = 'train_scores'
-            field = 'loss'
-        elif train_or_validation == 'validation':
-            collection = 'validation_scores'
-            field = 'scores.regression.mean_squared_error'
-        else:
-            raise ValueError(
-                "'{}' not valid argument.".format(train_or_validation))
+    def _get_validation_mse(self):
+        monary = Monary()
 
+        def get_mse_for_fold(fold):
+            iterations, loss, source_id = monary.query(
+                db='neuralnilm_experiments',
+                coll='validation_scores',
+                query={'experiment_id': self.experiment_id, 'fold': fold},
+                fields=['iteration', 'scores.regression.mean_squared_error',
+                        'source_id'],
+                types=['int32', 'float32', 'int8']
+            )
+
+            scores_df = pd.DataFrame(
+                {'loss': loss, 'source_id': source_id}, index=iterations)
+
+            return scores_df
+
+        FOLDS = ['unseen_appliances', 'unseen_activations_of_seen_appliances']
+        scores = {}
+        for fold in FOLDS:
+            scores[fold] = get_mse_for_fold(fold)
+
+        return scores
+
+    def _get_train_costs(self):
         # Get train scores
         monary = Monary()
         iterations, loss, source_id = monary.query(
             db='neuralnilm_experiments',
-            coll=collection,
+            coll='train_scores',
             query={'experiment_id': self.experiment_id},
-            fields=['iteration', field, 'source_id'],
+            fields=['iteration', 'loss', 'source_id'],
             types=['int32', 'float32', 'int8']
         )
 
@@ -77,31 +92,24 @@ class Monitor(object):
         return scores_df
 
     def _plot_train_scores(self):
-        train_scores_df = self._get_mse('train')
-        validation_mse_df = self._get_mse('validation')
+        train_scores_df = self._get_train_costs()
+        all_scores = self._get_validation_mse()
+        all_scores.update({'Train (for real)': train_scores_df})
+
         fig, ax = plt.subplots(1)
-        sources = train_scores_df['source_id'].unique()
-        for source_i in sources:
-            # Get losses for just this source
-            def get_loss_for_source(df):
-                mask = df['source_id'] == source_i
-                return df[mask]['loss']
-            train_loss_for_source = get_loss_for_source(train_scores_df)
-            validation_mse_for_source = get_loss_for_source(validation_mse_df)
+        for fold, scores_df in all_scores.iteritems():
+            sources = scores_df['source_id'].unique()
+            for source_i in sources:
+                # Get losses for just this source
+                mask = scores_df['source_id'] == source_i
+                loss = scores_df[mask]['loss']
 
-            # Downsample if necessary
-            train_loss_for_source = self._downsample(train_loss_for_source)
-            validation_mse_for_source = self._downsample(
-                validation_mse_for_source)
+                # Downsample if necessary
+                loss_for_source = self._downsample(loss)
 
-            # Plot
-            ax.plot(train_loss_for_source.index,
-                    train_loss_for_source.values,
-                    label='Train (source {:d})'.format(source_i))
-            if validation_mse_for_source.size > 0:
-                ax.plot(validation_mse_for_source.index,
-                        validation_mse_for_source.values,
-                        label='Validation (source {:d})'.format(source_i))
+                # Plot
+                ax.plot(loss_for_source.index, loss_for_source.values,
+                        label='{:s} (source {:d})'.format(fold, source_i))
 
         ax.legend()
         plt.title('Training costs')
