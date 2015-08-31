@@ -148,6 +148,7 @@ class Monitor(object):
     def _plot_validation_scores(self):
         validation_sources = self.db.validation_scores.distinct(
             key='source_id', filter={'experiment_id': self.experiment_id})
+        validation_sources.sort()
         num_cols = len(validation_sources)
         fig, axes = plt.subplots(
             nrows=3, ncols=num_cols, sharex="col", sharey="row",
@@ -192,6 +193,7 @@ class Monitor(object):
         data = {metric_name: result[i+1] for i, metric_name in
                 enumerate(self.validation_metric_names)}
         df = pd.DataFrame(data, index=index)
+        df = df.sort_index()
         df = self._downsample(df)
 
         # Create multiple independent axes.  Adapted from Joe Kington's answer:
