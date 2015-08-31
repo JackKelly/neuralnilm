@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from copy import copy
 import numpy as np
 import pandas as pd
 
@@ -33,8 +34,15 @@ class Source(object):
         """
         raise NotImplementedError()
 
+    @classmethod
+    def _attrs_to_remove_for_report(cls):
+        return ['activations', 'rng']
+
     def report(self):
-        return {self.__class__.__name__: self.__dict__}
+        report = copy(self.__dict__)
+        for attr in self._attrs_to_remove_for_report():
+            report.pop(attr, None)
+        return {self.__class__.__name__: report}
 
     def get_batch(self, num_seq_per_batch, fold='train',
                   enable_all_appliances=False):

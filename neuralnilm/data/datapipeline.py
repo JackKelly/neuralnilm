@@ -3,20 +3,32 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
-from neuralnilm.utils import none_to_list
+from neuralnilm.utils import none_to_list, none_to_array
 
 
 class DataPipeline(object):
     def __init__(self, sources, num_seq_per_batch,
-                 input_processing=None, target_processing=None):
+                 input_processing=None,
+                 target_processing=None,
+                 source_probabilities=None,
+                 rng_seed=None):
         self.sources = sources
         self.num_seq_per_batch = num_seq_per_batch
         self.input_processing = none_to_list(input_processing)
         self.target_processing = none_to_list(target_processing)
+        if source_probabilities is None:
+            n = len(self.sources)
+            self.source_probabilities = np.array([1 / n] * n)
+        else:
+            self.source_probabilities = np.array(source_probabilities)
+        self.rng_seed = rng_seed
+        self.rng = np.random.RandomState(self.rng_seed)
 
     def get_batch(self, fold='train', enable_all_appliances=False,
-                  source_id=0):
-        # TODO: DataPipeline will combine sources        
+                  source_id=None):
+        if source_id is None:
+            n = len(self.sources)
+            source_id = self.rng.choice(n, p=self.source_probabilities)
         batch = self.sources[source_id].get_batch(
             num_seq_per_batch=self.num_seq_per_batch,
             fold=fold,
@@ -80,6 +92,7 @@ class DataPipeline(object):
     def report(self):
         report = deepcopy(self.__dict__)
         report.pop('sources')
+        report.pop('rng')
         for source in self.sources:
             report.update(source.report())
         report['input_processing'] = [

@@ -16,6 +16,10 @@ def none_to_list(data):
     return [] if data is None else data
 
 
+def none_to_array(data, dtype=np.float32):
+    return np.array(none_to_list(data), dtype=dtype)
+
+
 def configure_logger(output_filename=None):
     logger = logging.getLogger("neuralnilm")
     if not logger.handlers:

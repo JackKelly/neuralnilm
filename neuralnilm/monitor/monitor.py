@@ -97,7 +97,7 @@ class Monitor(object):
     def _plot_train_scores(self):
         train_scores_df = self._get_train_costs()
         all_scores = self._get_validation_mse()
-        all_scores.update({'Train (for real)': train_scores_df})
+        all_scores.update({'train': train_scores_df})
 
         fig, ax = plt.subplots(1)
         for fold, scores_df in all_scores.iteritems():
@@ -147,27 +147,31 @@ class Monitor(object):
     def _plot_validation_scores(self):
         validation_sources = self.db.validation_scores.distinct(
             key='source_id', filter={'experiment_id': self.experiment_id})
+        num_cols = len(validation_sources)
         fig, axes = plt.subplots(
-            nrows=3, ncols=len(validation_sources), sharex=True, squeeze=False)
+            nrows=3, ncols=num_cols, sharex="col", sharey="row",
+            squeeze=False)
         # Make some space on the right side for the extra y-axes.
         fig.subplots_adjust(right=0.65)
         for col, source_id in enumerate(validation_sources):
             for row, fold in enumerate(DATA_FOLD_NAMES):
                 ax = axes[row, col]
-                lines = self._plot_validation_scores_for_source_and_fold(
+                self._plot_validation_scores_for_source_and_fold(
                     ax=ax, source_id=source_id, fold=fold,
-                    show_axes_labels=(row == 0))
-                ax.set_title(fold)
+                    show_axes_labels=(row == 0),
+                    show_scales=(col == num_cols-1))
+                if row == 0:
+                    title = "source_id = {:d}\n{}".format(source_id, fold)
+                else:
+                    title = fold
+                ax.set_title(title)
                 if row == 2:
                     ax.set_xlabel('Iteration')
-        # plt.legend(handles=lines, loc=(-0.2, -0.5),
-        #            ncol=len(self.validation_metric_names), fontsize=9,
-        #            frameon=False)
-#        plt.tight_layout()
         plt.show()
 
     def _plot_validation_scores_for_source_and_fold(self, ax, source_id, fold,
-                                                    show_axes_labels):
+                                                    show_axes_labels,
+                                                    show_scales):
         fields = ['iteration'] + ['scores.' + metric_name for metric_name in
                                   self.validation_metric_names]
         monary = Monary()
@@ -202,21 +206,27 @@ class Monitor(object):
         for metric_name in self.validation_metric_names[1:]:
             axes.append(ax.twinx())
 
-        for i, axis in enumerate(axes[2:]):
-            # To make the border of the right-most axis visible, we need to
-            # turn the frame on. This hides the other plots, however, so we
-            # need to turn its fill off.
-            axis.set_frame_on(True)
-            axis.patch.set_visible(False)
+        if show_scales:
+            for i, axis in enumerate(axes[2:]):
+                # To make the border of the right-most axis visible, we need to
+                # turn the frame on. This hides the other plots, however, so we
+                # need to turn its fill off.
+                axis.set_frame_on(True)
+                axis.patch.set_visible(False)
 
-            # Move the last y-axes spines over to the right by 20% of the width
-            # of the axes
-            axis.spines['right'].set_position(('axes', 1.1 + (0.1 * i)))
+                # Move the last y-axes spines over to the right by 20% of the
+                # width of the axes
+                axis.spines['right'].set_position(('axes', 1.1 + (0.1 * i)))
+        else:
+            for axis in axes:
+                axis.tick_params(labelright=False)
+                for spine in ['top', 'right']:
+                    axis.spines[spine].set_visible(False)
 
         lines = []
         for i, (axis, metric_name, color) in enumerate(
                 zip(axes, self.validation_metric_names, colors)):
-            axis.tick_params(axis='y', colors=color)
+            axis.tick_params(axis='y', colors=color, direction='out')
             label = metric_name.replace("regression.", "")
             label = label.replace("classification_", "")
             label = label.replace("_", " ")
@@ -224,7 +234,7 @@ class Monitor(object):
             label = label.replace(" ", "\n")
             line, = axis.plot(
                 df.index, df[metric_name].values, color=color, label=label)
-            if show_axes_labels:
+            if show_axes_labels and show_scales:
                 axis.set_ylabel(label, color=color, rotation=0, fontsize=8)
                 if i == 0:
                     coords = (0.0, 1.1)

@@ -4,7 +4,6 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 from neuralnilm.data.source import Source
-from neuralnilm.utils import flatten
 from neuralnilm.consts import DATA_FOLD_NAMES
 
 import logging
@@ -25,7 +24,6 @@ class ActivationsSource(Source):
         Each activation is a pd.Series with DatetimeIndex and the following
         metadata attributes: building, appliance, fold.
     """
-
     def _distractor_appliances(self, fold):
         all_appliances = set(self.activations[fold].keys())
         distractor_appliances = all_appliances - set([self.target_appliance])
@@ -128,9 +126,3 @@ class ActivationsSource(Source):
         positioned_activation_series = pd.Series(
             positioned_activation, index=index)
         return positioned_activation_series, is_complete
-
-    def report(self):
-        report = copy(self.__dict__)
-        report.pop('activations')
-        report.pop('rng')
-        return {self.__class__.__name__: report}

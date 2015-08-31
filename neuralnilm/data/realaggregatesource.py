@@ -29,7 +29,6 @@ class RealAggregateSource(ActivationsSource):
     sections_with_no_target : dict
         Same structure as `mains`.
     """
-
     def __init__(self, activations, target_appliance,
                  seq_length, filename, windows, sample_period,
                  target_inclusion_prob=1.0,
@@ -268,3 +267,9 @@ class RealAggregateSource(ActivationsSource):
             return seq
         raise RuntimeError("No valid sequences found after {} retries!"
                            .format(MAX_RETRIES))
+
+    @classmethod
+    def _attrs_to_remove_for_report(cls):
+        return [
+            'activations', 'rng', 'mains', 'mains_good_sections',
+            'sections_with_no_target']
