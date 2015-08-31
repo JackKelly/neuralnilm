@@ -1,8 +1,9 @@
 from __future__ import print_function, division
+from copy import copy
 import numpy as np
 
 import nilmtk
-from neuralnilm.consts import DATA_FOLD_NAMES
+from neuralnilm.utils import check_windows
 
 import logging
 logger = logging.getLogger(__name__)
@@ -31,27 +32,20 @@ def load_nilmtk_activations(appliances, filename, sample_period, windows):
              <appliance>: {
                  <building_name>: [<activations>]
         }}}
-        Each activation is a pd.Series with DatetimeIndex.
+        Each activation is a pd.Series with DatetimeIndex and the following
+        metadata attributes: building, appliance, fold.
     """
     logger.info("Loading NILMTK activations...")
 
     # Sanity check
-    if set(windows.keys()) != set(DATA_FOLD_NAMES):
-        raise ValueError(
-            "`windows` must have these exact keys: '{}'.  Not '{}'."
-            .format(DATA_FOLD_NAMES, windows.keys()))
-    if (set(windows['train'].keys()) !=
-            set(windows['unseen_activations_of_seen_appliances'].keys())):
-        raise ValueError(
-            "`train` and `unseen_activations_of_seen_appliances` must refer"
-            " to exactly the same buildings.")
+    check_windows(windows)
 
     # Load dataset
     dataset = nilmtk.DataSet(filename)
 
     all_activations = {}
     for fold, buildings_and_windows in windows.iteritems():
-        activations = {appliance: {} for appliance in appliances}
+        activations_for_fold = {}
         for building_i, window in buildings_and_windows.iteritems():
             dataset.set_window(*window)
             elec = dataset.buildings[building_i].elec
@@ -60,39 +54,39 @@ def load_nilmtk_activations(appliances, filename, sample_period, windows):
             for appliance in appliances:
                 logger.info(
                     "Loading {} for {}...".format(appliance, building_name))
+
+                # Get meter for appliance
                 try:
                     meter = elec[appliance]
                 except KeyError as exception:
                     logger.info(building_name + " has no " + appliance +
                                 ". Full exception: {}".format(exception))
                     continue
-                meter_activations = meter.get_activations()
-                meter_activations = _process_activations(
-                    meter_activations, sample_period)
+
+                # Get activations_for_fold and process them
+                meter_activations = meter.get_activations(
+                    sample_period=sample_period)
+                meter_activations = [activation.astype(np.float32)
+                                     for activation in meter_activations]
+
+                # Attach metadata
+                for activation in meter_activations:
+                    activation._metadata = copy(activation._metadata)
+                    activation._metadata.extend(
+                        ["building", "appliance", "fold"])
+                    activation.building = building_name
+                    activation.appliance = appliance
+                    activation.fold = fold
+
+                # Save
                 if meter_activations:
-                    activations[appliance][building_name] = meter_activations
+                    activations_for_fold.setdefault(
+                        appliance, {})[building_name] = meter_activations
                 logger.info(
                     "Loaded {} {} activations from {}."
                     .format(len(meter_activations), appliance, building_name))
-        activations = {appliance: data
-                       for appliance, data in activations.iteritems() if data}
-        all_activations[fold] = activations
+        all_activations[fold] = activations_for_fold
 
     dataset.store.close()
     logger.info("Done loading NILMTK activations.")
     return all_activations
-
-
-def _process_activations(activations, sample_period):
-    for i, activation in enumerate(activations):
-        # tz_convert('UTC') is a workaround for Pandas bug #10117
-        tz = activation.index.tz.zone
-        activation = activation.tz_convert('UTC')
-        freq = "{:d}S".format(sample_period)
-        activation = activation.resample(freq)
-        activation.fillna(method='ffill', inplace=True)
-        activation.fillna(method='bfill', inplace=True)
-        activation = activation.tz_convert(tz)
-        activation = activation.astype(np.float32)
-        activations[i] = activation
-    return activations

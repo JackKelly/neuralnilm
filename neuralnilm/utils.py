@@ -5,6 +5,7 @@ import csv
 import numpy as np
 import theano
 import theano.tensor as T
+from neuralnilm.consts import DATA_FOLD_NAMES
 
 
 def none_to_dict(data):
@@ -82,3 +83,15 @@ def downsample(array, factor):
     array = array.reshape(-1, factor)
     downsampled = array.mean(axis=1)
     return downsampled
+
+
+def check_windows(windows):
+    if set(windows.keys()) != set(DATA_FOLD_NAMES):
+        raise ValueError(
+            "`windows` must have these exact keys: '{}'.  Not '{}'."
+            .format(DATA_FOLD_NAMES, windows.keys()))
+    if (set(windows['train'].keys()) !=
+            set(windows['unseen_activations_of_seen_appliances'].keys())):
+        raise ValueError(
+            "`train` and `unseen_activations_of_seen_appliances` must refer"
+            " to exactly the same buildings.")
