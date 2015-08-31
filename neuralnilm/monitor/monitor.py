@@ -7,9 +7,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from neuralnilm.consts import DATA_FOLD_NAMES
 
+
 class Monitor(object):
     def __init__(self, experiment_id, output_path='.',
-                 update_period=1, max_num_lines=1000):
+                 update_period=1, max_num_lines=1000,
+                 mongo_db='neuralnilm'):
         """
         Parameters
         ----------
@@ -22,7 +24,8 @@ class Monitor(object):
         self.max_num_lines = max_num_lines
         self._last_iteration_processed = {'train': 0, 'validation': 0}
         self.mongo_client = pymongo.MongoClient()
-        self.db = self.mongo_client.neuralnilm_experiments
+        self.db = self.mongo_client[mongo_db]
+        self.mongo_db = mongo_db
         self._validation_metric_names = None
 
     def start(self):
@@ -55,7 +58,7 @@ class Monitor(object):
 
         def get_mse_for_fold(fold):
             iterations, loss, source_id = monary.query(
-                db='neuralnilm_experiments',
+                db=self.mongo_db,
                 coll='validation_scores',
                 query={'experiment_id': self.experiment_id, 'fold': fold},
                 fields=['iteration', 'scores.regression.mean_squared_error',
@@ -79,7 +82,7 @@ class Monitor(object):
         # Get train scores
         monary = Monary()
         iterations, loss, source_id = monary.query(
-            db='neuralnilm_experiments',
+            db=self.mongo_db,
             coll='train_scores',
             query={'experiment_id': self.experiment_id},
             fields=['iteration', 'loss', 'source_id'],
@@ -116,7 +119,11 @@ class Monitor(object):
         ax.set_xlabel('Iteration')
         ax.set_ylabel('Mean squared error')
         plt.show()
-        self._last_iteration_processed['train'] = train_scores_df.index[-1]
+        try:
+            self._last_iteration_processed['train'] = train_scores_df.index[-1]
+        except IndexError:
+            # No data loaded
+            pass
 
     @property
     def validation_metric_names(self):
@@ -165,7 +172,7 @@ class Monitor(object):
                                   self.validation_metric_names]
         monary = Monary()
         result = monary.query(
-            db='neuralnilm_experiments',
+            db=self.mongo_db,
             coll='validation_scores',
             query={
                 'experiment_id': self.experiment_id,

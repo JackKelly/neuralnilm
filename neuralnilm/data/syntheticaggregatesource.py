@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class SyntheticAggregateSource(ActivationsSource):
     def __init__(self, activations, target_appliance, seq_length,
+                 sample_period,
                  distractor_inclusion_prob=1.0,
                  target_inclusion_prob=1.0,
                  uniform_prob_of_selecting_each_building=True,
@@ -20,6 +21,7 @@ class SyntheticAggregateSource(ActivationsSource):
         self.activations = activations
         self.target_appliance = target_appliance
         self.seq_length = seq_length
+        self.sample_period = sample_period
         self.distractor_inclusion_prob = distractor_inclusion_prob
         self.target_inclusion_prob = target_inclusion_prob
         self.uniform_prob_of_selecting_each_building = (
