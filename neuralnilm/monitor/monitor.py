@@ -151,7 +151,7 @@ class Monitor(object):
         validation_sources.sort()
         num_cols = len(validation_sources)
         fig, axes = plt.subplots(
-            nrows=3, ncols=num_cols, sharex="col", sharey="row",
+            nrows=3, ncols=num_cols, sharex="col", sharey=True,
             squeeze=False)
         # Make some space on the right side for the extra y-axes.
         fig.subplots_adjust(right=0.65)
