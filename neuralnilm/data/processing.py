@@ -24,3 +24,8 @@ class DivideBy(Processor):
 
     def inverse(self, quotient):
         return quotient * self.divisor
+
+
+class IndependentlyCenter(Processor):
+    def __call__(self, data):
+        return data - data.mean(axis=1).flatten()

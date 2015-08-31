@@ -31,7 +31,7 @@ class RealAggregateSource(ActivationsSource):
     """
     def __init__(self, activations, target_appliance,
                  seq_length, filename, windows, sample_period,
-                 target_inclusion_prob=1.0,
+                 target_inclusion_prob=0.5,
                  uniform_prob_of_selecting_each_building=True,
                  allow_incomplete_target=True,
                  include_incomplete_target_in_output=True,
@@ -208,7 +208,7 @@ class RealAggregateSource(ActivationsSource):
         return seq
 
     def _get_sequence_which_includes_target(self, fold):
-        MAX_RETRIES = 5
+        MAX_RETRIES = 50
         for retry_i in range(MAX_RETRIES):
             seq = Sequence(self.seq_length)
             building_name = self._select_building(fold, self.target_appliance)

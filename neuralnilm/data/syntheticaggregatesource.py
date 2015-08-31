@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 class SyntheticAggregateSource(ActivationsSource):
     def __init__(self, activations, target_appliance, seq_length,
                  sample_period,
-                 distractor_inclusion_prob=1.0,
-                 target_inclusion_prob=1.0,
+                 distractor_inclusion_prob=0.25,
+                 target_inclusion_prob=0.5,
                  uniform_prob_of_selecting_each_building=True,
                  allow_incomplete_target=True,
                  allow_incomplete_distractors=True,

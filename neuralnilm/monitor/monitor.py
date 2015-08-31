@@ -68,7 +68,7 @@ class Monitor(object):
 
             scores_df = pd.DataFrame(
                 {'loss': loss, 'source_id': source_id}, index=iterations)
-
+            scores_df = scores_df.sort_index()
             return scores_df
 
         FOLDS = ['unseen_appliances', 'unseen_activations_of_seen_appliances']
@@ -91,6 +91,7 @@ class Monitor(object):
 
         scores_df = pd.DataFrame(
             {'loss': loss, 'source_id': source_id}, index=iterations)
+        scores_df = scores_df.sort_index()
 
         return scores_df
 
