@@ -1,9 +1,12 @@
 from __future__ import division
+from copy import copy
 
 
 class Processor(object):
     def report(self):
-        return {self.__class__.__name__: self.__dict__}
+        report = copy(self.__dict__)
+        report['name'] = self.__class__.__name__
+        return report
 
     def inverse(self, data):
         raise NotImplementedError("To be implemented by subclass.")

@@ -16,10 +16,6 @@ def none_to_list(data):
     return [] if data is None else data
 
 
-def none_to_array(data, dtype=np.float32):
-    return np.array(none_to_list(data), dtype=dtype)
-
-
 def configure_logger(output_filename=None):
     logger = logging.getLogger("neuralnilm")
     if not logger.handlers:
@@ -99,3 +95,24 @@ def check_windows(windows):
         raise ValueError(
             "`train` and `unseen_activations_of_seen_appliances` must refer"
             " to exactly the same buildings.")
+
+
+def sanitise_value_for_mogno(value):
+    if isinstance(value, dict):
+        value = sanitise_dict_for_mongo(value)
+    elif isinstance(value, list):
+        value = [sanitise_value_for_mogno(item) for item in value]
+    elif isinstance(value, np.floating):
+        value = float(value)
+    elif isinstance(value, np.integer):
+        value = int(value)
+    return value
+
+
+def sanitise_dict_for_mongo(dictionary):
+    """Convert dict keys to strings (Mongo doesn't like numeric keys)"""
+    new_dict = {}
+    for key, value in dictionary.iteritems():
+        new_dict[str(key)] = sanitise_value_for_mogno(value)
+
+    return new_dict

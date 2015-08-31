@@ -34,16 +34,6 @@ class Source(object):
         """
         raise NotImplementedError()
 
-    @classmethod
-    def _attrs_to_remove_for_report(cls):
-        return ['activations', 'rng']
-
-    def report(self):
-        report = copy(self.__dict__)
-        for attr in self._attrs_to_remove_for_report():
-            report.pop(attr, None)
-        return {self.__class__.__name__: report}
-
     def get_batch(self, num_seq_per_batch, fold='train',
                   enable_all_appliances=False):
         input_sequences = []
@@ -69,3 +59,14 @@ class Source(object):
             batch.all_appliances = pd.concat(
                 all_appliances, axis=1, names=['sequence', 'appliance'])
         return batch
+
+    @classmethod
+    def _attrs_to_remove_for_report(cls):
+        return ['activations', 'rng']
+
+    def report(self):
+        report = copy(self.__dict__)
+        report['name'] = self.__class__.__name__
+        for attr in self._attrs_to_remove_for_report():
+            report.pop(attr, None)
+        return report

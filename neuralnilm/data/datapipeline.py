@@ -1,9 +1,8 @@
 from __future__ import print_function, division
-from copy import deepcopy
+from copy import copy
 import numpy as np
-import pandas as pd
 
-from neuralnilm.utils import none_to_list, none_to_array
+from neuralnilm.utils import none_to_list
 
 
 class DataPipeline(object):
@@ -18,9 +17,9 @@ class DataPipeline(object):
         self.target_processing = none_to_list(target_processing)
         if source_probabilities is None:
             n = len(self.sources)
-            self.source_probabilities = np.array([1 / n] * n)
+            self.source_probabilities = [1 / n] * n
         else:
-            self.source_probabilities = np.array(source_probabilities)
+            self.source_probabilities = source_probabilities
         self.rng_seed = rng_seed
         self.rng = np.random.RandomState(self.rng_seed)
 
@@ -90,13 +89,13 @@ class DataPipeline(object):
         return processing_steps
 
     def report(self):
-        report = deepcopy(self.__dict__)
+        report = copy(self.__dict__)
         report.pop('sources')
         report.pop('rng')
-        for source in self.sources:
-            report.update(source.report())
+        report['sources'] = {
+            i: source.report() for i, source in enumerate(self.sources)}
         report['input_processing'] = [
             processor.report() for processor in self.input_processing]
         report['target_processing'] = [
             processor.report() for processor in self.target_processing]
-        return {self.__class__.__name__: report}
+        return {'pipeline': report}

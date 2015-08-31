@@ -1,13 +1,19 @@
 trained_nets
 {
     '_id': 'e123_fridge',
-    'sources': [
-	{'_id': 0,
-	 'name': 'SyntheticAggregateSource',
-	 'n_train_activations': {'fridge': 100, 'tv': 50},
-	 'input_stats': {'mean': 0.4, 'std': 0.5}
-	}
-    ],
+    'data': {
+	'pipeline': {
+	    'sources': {
+		0: {
+		    'name': 'SyntheticAggregateSource',
+		    'n_train_activations': {'fridge': 100, 'tv': 50},
+		    'input_stats': {'mean': 0.4, 'std': 0.5}
+		}
+	    },
+	    'input_processing': []
+	},
+	'activations: {}
+    },
     'trainer': {
 	'loss_function': 'mean_squared_error',
 	'update_function': 'NAG',

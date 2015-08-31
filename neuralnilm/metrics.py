@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from copy import copy
 import numpy as np
 import sklearn.metrics as metrics
 
@@ -107,3 +108,8 @@ class Metrics(object):
             scores[metric.__name__] = float(metric(target_class, output_class))
 
         return scores
+
+    def report(self):
+        report = copy(self.__dict__)
+        report['name'] = self.__class__.__name__
+        return report

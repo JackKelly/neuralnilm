@@ -1,6 +1,8 @@
 from __future__ import print_function, division
 from functools import partial
 import os
+import shutil
+from copy import copy
 import numpy as np
 import pandas as pd
 import theano
@@ -10,9 +12,9 @@ from pymongo import MongoClient
 from lasagne.updates import nesterov_momentum
 from lasagne.objectives import aggregate, squared_error
 from lasagne.layers.helper import get_all_params
-from .utils import sfloatX, ndim_tensor, ANSI
+from .utils import sfloatX, ndim_tensor, ANSI, none_to_dict, sanitise_dict_for_mongo
 from neuralnilm.data.datathread import DataThread
-from neuralnilm.consts import DATA_FOLD_NAMES
+from neuralnilm.consts import DATA_FOLD_NAMES, COLLECTIONS
 from neuralnilm.config import CONFIG
 
 import logging
@@ -25,11 +27,11 @@ class Trainer(object):
                  mongo_db='neuralnilm',
                  loss_func=squared_error,
                  loss_aggregation_mode='mean',
-                 updates_func=partial(nesterov_momentum, momentum=0.9),
+                 updates_func=nesterov_momentum,
+                 updates_func_kwards=None,
                  learning_rates=None,
                  callbacks=None,
                  repeat_callbacks=None,
-                 display=None,
                  metrics=None):
         """
         Parameters
@@ -45,8 +47,6 @@ class Trainer(object):
             Function must accept a single argument: this Trainer object.
             For example, to run validation every 100 iterations, set
             `repeat_callbacks=[(100, Trainer.validate)]`.
-        display : neuralnilm.Display object
-            For displaying and saving plots and data during training.
         metrics : neuralnilm.Metrics object
             Run during `Trainer.validation()`
         """
@@ -59,11 +59,27 @@ class Trainer(object):
             {0: 1E-2} if learning_rates is None else learning_rates)
         self.experiment_id = "_".join(experiment_id)
         self._train_func = None
-        self.display = display
         self.metrics = metrics
         self.net = net
         self.data_pipeline = data_pipeline
         self.min_train_cost = float("inf")
+
+        # Check if this experiment already exists in database
+        delete_or_quit = None
+        if self.db.trained_nets.find_one({'_id': self.experiment_id}):
+            delete_or_quit = raw_input(
+                "Database already has an experiment with _id == {}."
+                " Should the old experiment be deleted"
+                " (both from the database and from disk)?"
+                " Or quit? [Q/d] ".format(self.experiment_id)).lower()
+            if delete_or_quit == 'd':
+                logger.info("Deleting documents for old experiment.")
+                self.db.trained_nets.delete_one({'_id': self.experiment_id})
+                for collection in COLLECTIONS:
+                    self.db[collection].delete_many(
+                        {'experiment_id': self.experiment_id})
+            else:
+                raise KeyboardInterrupt()
 
         # Output path
         self.output_path = os.path.join(
@@ -73,7 +89,13 @@ class Trainer(object):
             os.makedirs(self.output_path)
         except OSError as os_error:
             if os_error.errno == 17:  # file exists
-                logger.info(str(os_error))
+                logger.info("Directory exists = '{}'".format(self.output_path))
+                if delete_or_quit == 'd':
+                    logger.info("  Deleting directory.")
+                    shutil.rmtree(self.output_path)
+                    os.makedirs(self.output_path)
+                else:
+                    logger.info("  Re-using directory.")
             else:
                 raise
 
@@ -81,8 +103,12 @@ class Trainer(object):
         def aggregated_loss_func(prediction, target):
             loss = loss_func(prediction, target)
             return aggregate(loss, mode=loss_aggregation_mode)
+        self.loss_func_name = loss_func.__name__
         self.loss_func = aggregated_loss_func
-        self.updates_func = updates_func
+        self.updates_func_name = updates_func.__name__
+        self.updates_func_kwards = none_to_dict(updates_func_kwards)
+        self.updates_func = partial(updates_func, **self.updates_func_kwards)
+        self.loss_aggregation_mode = loss_aggregation_mode
 
         # Learning rate
         # Set _learning_rate to -1 so when we set self.learning_rate
@@ -94,6 +120,9 @@ class Trainer(object):
             return pd.DataFrame(lst, columns=['iteration', 'function'])
         self.callbacks = callbacks_dataframe(callbacks)
         self.repeat_callbacks = callbacks_dataframe(repeat_callbacks)
+
+        # Log to database
+        self.db.trained_nets.insert_one(sanitise_dict_for_mongo(self.report()))
 
     @property
     def learning_rate(self):
@@ -125,8 +154,6 @@ class Trainer(object):
     def fit(self, num_iterations=None):
         self.data_thread = DataThread(self.data_pipeline)
         self.data_thread.start()
-        if self.display is not None:
-            self.display.start()
 
         run_menu = False
 
@@ -138,8 +165,6 @@ class Trainer(object):
             run_menu = True
         finally:
             self.data_thread.stop()
-            if self.display is not None:
-                self.display.stop()
 
         if run_menu:
             self._menu(num_iterations)
@@ -312,6 +337,18 @@ class Trainer(object):
                 break
         print("Continuing training for {} epochs...".format(epochs))
         self.fit(epochs)
+
+    def report(self):
+        report = {'trainer': copy(self.__dict__)}
+        for attr in [
+                'data_pipeline', 'loss_func', 'net', 'repeat_callbacks',
+                'callbacks', 'db', 'experiment_id', 'metrics',
+                '_learning_rate', '_train_func', 'updates_func']:
+            report['trainer'].pop(attr, None)
+        report['trainer']['metrics'] = self.metrics.report()
+        report['data'] = self.data_pipeline.report()
+        report['_id'] = self.experiment_id
+        return report
 
 
 class TrainingError(Exception):
