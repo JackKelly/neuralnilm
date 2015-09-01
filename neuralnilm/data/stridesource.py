@@ -24,11 +24,6 @@ class StrideSource(Source):
         {<train | unseen_appliances | unseen_activations_of_seen_appliances>: {
              <building_name>: pd.DataFrame of with 2 cols: mains, target
         }}
-    _seq_i : dict of ints:
-        {<train | unseen_appliances | unseen_activations_of_seen_appliances>:
-           int}
-        How many sequences have been emitted so far.  Loops back to 0 when
-        all the data has been gone through.
     _num_seqs : pd.Series with 2-level hierarchical index
         L0 : train, unseen_appliances, unseen_activations_of_seen_appliances
         L1 : building_names
@@ -46,12 +41,13 @@ class StrideSource(Source):
         self.stride = self.seq_length if stride is None else stride
         self._reset()
         super(StrideSource, self).__init__(rng_seed=rng_seed)
+        # stop validation only when we've gone through all validation data
+        self.num_batches_for_validation = None
 
         self._load_data_into_memory()
         self._compute_num_sequences_per_building()
 
     def _reset(self):
-        self._seq_i = {fold: 0 for fold in DATA_FOLD_NAMES}
         self.data = {}
         self._num_seqs = pd.Series()
 
@@ -124,46 +120,42 @@ class StrideSource(Source):
                              " for StrideSource!")
 
         # select building
-        seq_i = self._seq_i[fold]
         building_divisions = self._num_seqs[fold].cumsum()
-        prev_seq_cumsum = 0
-        for row_building, row_seq_cumsum in building_divisions.iteritems():
-            if prev_seq_cumsum <= seq_i < row_seq_cumsum:
-                building_name = row_building
-                seq_i_for_building = seq_i - prev_seq_cumsum
-                break
-            else:
-                prev_seq_cumsum = row_seq_cumsum
-        else:
-            # Wrap round!
-            seq_i = 0
-            building_name = building_divisions.index[0]
-            seq_i_for_building = 0
+        total_seq_for_fold = self._num_seqs[fold].sum()
+        building_row_i = 0
+        building_name = building_divisions.index[0]
+        prev_division = 0
+        for seq_i in range(total_seq_for_fold):
+            if seq_i == building_divisions.iloc[building_row_i]:
+                prev_division = seq_i
+                building_row_i += 1
+                building_name = building_divisions.index[building_row_i]
 
-        start_i = seq_i_for_building * self.stride
-        end_i = start_i + self.seq_length
-        data_for_seq = self.data[fold][building_name].iloc[start_i:end_i]
+            seq_i_for_building = seq_i - prev_division
+            start_i = seq_i_for_building * self.stride
+            end_i = start_i + self.seq_length
+            data_for_seq = self.data[fold][building_name].iloc[start_i:end_i]
 
-        def get_data(col):
-            data = data_for_seq[col].values
-            n_zeros_to_pad = self.seq_length - len(data)
-            data = np.pad(data, pad_width=(0, n_zeros_to_pad), mode='constant')
-            return data[:, np.newaxis]
+            def get_data(col):
+                data = data_for_seq[col].values
+                n_zeros_to_pad = self.seq_length - len(data)
+                data = np.pad(
+                    data, pad_width=(0, n_zeros_to_pad), mode='constant')
+                return data[:, np.newaxis]
 
-        seq = Sequence(self.seq_length)
-        seq.input = get_data('mains')
-        seq.target = get_data('target')
-        seq.metadata = {
-            'seq_i': seq_i,
-            'building_name': building_name,
-            'total_num_sequences': self._num_seqs[fold].sum(),
-            'start_date': data_for_seq.index[0],
-            'end_date': data_for_seq.index[-1]
-        }
+            seq = Sequence(self.seq_length)
+            seq.input = get_data('mains')
+            seq.target = get_data('target')
+            seq.metadata = {
+                'seq_i': seq_i,
+                'building_name': building_name,
+                'total_num_sequences': total_seq_for_fold,
+                'start_date': data_for_seq.index[0],
+                'end_date': data_for_seq.index[-1]
+            }
 
-        self._seq_i[fold] = seq_i + 1
-        return seq
+            yield seq
 
     @classmethod
     def _attrs_to_remove_for_report(cls):
-        return ['data']
+        return ['data', '_num_seqs', 'rng']

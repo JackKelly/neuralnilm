@@ -192,7 +192,7 @@ class RealAggregateSource(ActivationsSource):
                 self.activations[fold][self.target_appliance][building] = (
                     activations)
 
-    def get_sequence(self, fold='train', enable_all_appliances=False):
+    def _get_sequence(self, fold='train', enable_all_appliances=False):
         if enable_all_appliances:
             raise ValueError("`enable_all_appliances` is not implemented yet"
                              " for RealAggregateSource!")

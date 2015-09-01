@@ -3,6 +3,7 @@ import logging
 from sys import stdout
 import csv
 import numpy as np
+import pandas as pd
 import theano
 import theano.tensor as T
 from neuralnilm.consts import DATA_FOLD_NAMES
@@ -116,3 +117,20 @@ def sanitise_dict_for_mongo(dictionary):
         new_dict[str(key)] = sanitise_value_for_mogno(value)
 
     return new_dict
+
+
+def two_level_dict_to_series(dictionary):
+    index = []
+    values = []
+    for k0, v0 in dictionary.iteritems():
+        for k1, v1 in v0.iteritems():
+            index.append((k0, k1))
+            values.append(v1)
+    return pd.Series(values, pd.MultiIndex.from_tuples(index))
+
+
+def two_level_series_to_dict(series):
+    dictionary = {}
+    for (k0, k1), value in series.iteritems():
+        dictionary.setdefault(k0, {})[k1] = value
+    return dictionary

@@ -24,9 +24,10 @@ class Sequence(object):
 
 
 class Source(object):
-    def __init__(self, rng_seed=None):
+    def __init__(self, rng_seed=None, num_batches_for_validation=16):
         self.rng_seed = rng_seed
         self.rng = np.random.RandomState(rng_seed)
+        self.num_batches_for_validation = num_batches_for_validation
 
     def get_sequence(self, validation=False):
         """
@@ -37,30 +38,46 @@ class Source(object):
         raise NotImplementedError()
 
     def get_batch(self, num_seq_per_batch, fold='train',
-                  enable_all_appliances=False):
-        input_sequences = []
-        target_sequences = []
-        all_appliances = {}
-        for i in range(num_seq_per_batch):
-            seq = self.get_sequence(
-                fold=fold,
-                enable_all_appliances=enable_all_appliances)
-            if enable_all_appliances:
-                all_appliances[i] = seq.all_appliances
-            input_sequences.append(seq.input[np.newaxis, :])
-            target_sequences.append(seq.target[np.newaxis, :])
+                  enable_all_appliances=False, validation=False):
+        """
+        Returns
+        -------
+        iterators of Batch objects
+        """
+        seq_iterator = self.get_sequence(
+            fold=fold,
+            enable_all_appliances=enable_all_appliances)
+        stop = False
+        batch_i = 0
+        while not stop:
+            if validation and batch_i == self.num_batches_for_validation:
+                break
+            input_sequences = []
+            target_sequences = []
+            all_appliances = {}
+            for i in range(num_seq_per_batch):
+                try:
+                    seq = seq_iterator.next()
+                except StopIteration:
+                    stop = True
+                    seq = Sequence((self.seq_length, 1))
+                if enable_all_appliances:
+                    all_appliances[i] = seq.all_appliances
+                input_sequences.append(seq.input[np.newaxis, :])
+                target_sequences.append(seq.target[np.newaxis, :])
 
-        batch = Batch()
-        batch.metadata['fold'] = fold
-        batch.metadata['source_name'] = self.__class__.__name__
-        batch.before_processing.input = np.concatenate(input_sequences)
-        del input_sequences
-        batch.before_processing.target = np.concatenate(target_sequences)
-        del target_sequences
-        if enable_all_appliances:
-            batch.all_appliances = pd.concat(
-                all_appliances, axis=1, names=['sequence', 'appliance'])
-        return batch
+            batch = Batch()
+            batch.metadata['fold'] = fold
+            batch.metadata['source_name'] = self.__class__.__name__
+            batch.before_processing.input = np.concatenate(input_sequences)
+            del input_sequences
+            batch.before_processing.target = np.concatenate(target_sequences)
+            del target_sequences
+            if enable_all_appliances:
+                batch.all_appliances = pd.concat(
+                    all_appliances, axis=1, names=['sequence', 'appliance'])
+            yield batch
+            batch_i += 1
 
     @classmethod
     def _attrs_to_remove_for_report(cls):

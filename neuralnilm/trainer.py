@@ -12,7 +12,9 @@ from pymongo import MongoClient
 from lasagne.updates import nesterov_momentum
 from lasagne.objectives import aggregate, squared_error
 from lasagne.layers.helper import get_all_params
-from .utils import sfloatX, ndim_tensor, ANSI, none_to_dict, sanitise_dict_for_mongo
+from .utils import (sfloatX, ndim_tensor, ANSI, none_to_dict, none_to_list,
+                    sanitise_dict_for_mongo, two_level_dict_to_series,
+                    two_level_series_to_dict)
 from neuralnilm.data.datathread import DataThread
 from neuralnilm.consts import DATA_FOLD_NAMES, COLLECTIONS
 from neuralnilm.config import CONFIG
@@ -32,6 +34,7 @@ class Trainer(object):
                  learning_rates=None,
                  callbacks=None,
                  repeat_callbacks=None,
+                 epoch_callbacks=None,
                  metrics=None):
         """
         Parameters
@@ -47,6 +50,8 @@ class Trainer(object):
             Function must accept a single argument: this Trainer object.
             For example, to run validation every 100 iterations, set
             `repeat_callbacks=[(100, Trainer.validate)]`.
+        epoch_callbacks : list of functions
+            Functions are called at the end of each training epoch.
         metrics : neuralnilm.Metrics object
             Run during `Trainer.validation()`
         """
@@ -120,6 +125,7 @@ class Trainer(object):
             return pd.DataFrame(lst, columns=['iteration', 'function'])
         self.callbacks = callbacks_dataframe(callbacks)
         self.repeat_callbacks = callbacks_dataframe(repeat_callbacks)
+        self.epoch_callbacks = none_to_list(epoch_callbacks)
 
         # Log to database
         self.db.trained_nets.insert_one(sanitise_dict_for_mongo(self.report()))
@@ -181,6 +187,12 @@ class Trainer(object):
                 self._single_train_iteration()
             except TrainingError:
                 break
+            except StopIteration:
+                logger.info("Iteration {:d}: Finished training epoch"
+                            .format(self.net.train_iterations))
+                for callback in self.epoch_callbacks:
+                    callback(self)
+                continue
 
             if self.net.train_iterations == num_iterations:
                 break
@@ -199,6 +211,8 @@ class Trainer(object):
         # Training
         time0 = time()
         batch = self.data_thread.get_batch()
+        if batch is None:
+            raise StopIteration()
         train_cost = self._get_train_func()(batch.input, batch.target)
         train_cost = float(train_cost.flatten()[0])
         duration = time() - time0
@@ -231,33 +245,52 @@ class Trainer(object):
             raise TrainingError(msg)
 
         # Callbacks
-        def run_callbacks(df):
-            for callback in df['function']:
-                callback(self)
         repeat_callbacks = self.repeat_callbacks[
             (self.net.train_iterations %
              self.repeat_callbacks['iteration']) == 0]
-        run_callbacks(repeat_callbacks)
+        self._run_callbacks(repeat_callbacks)
         callbacks = self.callbacks[
             self.callbacks['iteration'] == self.net.train_iterations]
-        run_callbacks(callbacks)
+        self._run_callbacks(callbacks)
+
+    def _run_callbacks(self, df):
+        for callback in df['function']:
+            callback(self)
 
     def validate(self):
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
         for source_id, source in enumerate(sources):
             for fold in DATA_FOLD_NAMES:
+                scores_accumulator = None
+                n = 0
                 batch = self.data_thread.data_pipeline.get_batch(
-                    fold=fold, source_id=source_id)
-                output = output_func(batch.after_processing.input)
-                scores = self.metrics.compute_metrics(
-                    output, batch.after_processing.target)
+                    fold=fold, source_id=source_id, reset_iterator=True,
+                    validation=True)
+                while True:
+                    output = output_func(batch.after_processing.input)
+                    scores_for_batch = self.metrics.compute_metrics(
+                        output, batch.after_processing.target)
+                    scores_for_batch = two_level_dict_to_series(
+                        scores_for_batch)
+                    if scores_accumulator is None:
+                        scores_accumulator = scores_for_batch
+                    else:
+                        scores_accumulator += scores_for_batch
+                    n += 1
+                    batch = self.data_thread.data_pipeline.get_batch(
+                        fold=fold, source_id=source_id, validation=True)
+                    if batch is None:
+                        # end of validation data
+                        break
+                scores = scores_accumulator / n
+                scores = scores.astype(float)
                 self.db.validation_scores.insert_one({
                     'experiment_id': self.experiment_id,
                     'iteration': self.net.train_iterations,
-                    'source_id': batch.metadata['source_id'],
+                    'source_id': source_id,
                     'fold': fold,
-                    'scores': scores
+                    'scores': two_level_series_to_dict(scores)
                 })
 
     def _get_train_func(self):
@@ -342,8 +375,8 @@ class Trainer(object):
         report = {'trainer': copy(self.__dict__)}
         for attr in [
                 'data_pipeline', 'loss_func', 'net', 'repeat_callbacks',
-                'callbacks', 'db', 'experiment_id', 'metrics',
-                '_learning_rate', '_train_func', 'updates_func']:
+                'callbacks', 'epoch_callbacks', 'db', 'experiment_id',
+                'metrics', '_learning_rate', '_train_func', 'updates_func']:
             report['trainer'].pop(attr, None)
         report['trainer']['metrics'] = self.metrics.report()
         report['data'] = self.data_pipeline.report()

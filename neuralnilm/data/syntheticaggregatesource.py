@@ -32,7 +32,7 @@ class SyntheticAggregateSource(ActivationsSource):
             include_incomplete_target_in_output)
         super(SyntheticAggregateSource, self).__init__(rng_seed=rng_seed)
 
-    def get_sequence(self, fold='train', enable_all_appliances=False):
+    def _get_sequence(self, fold='train', enable_all_appliances=False):
         seq = Sequence(self.seq_length)
         all_appliances = {}
 

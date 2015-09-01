@@ -15,29 +15,45 @@ class DataPipeline(object):
         self.num_seq_per_batch = num_seq_per_batch
         self.input_processing = none_to_list(input_processing)
         self.target_processing = none_to_list(target_processing)
+        num_sources = len(self.sources)
         if source_probabilities is None:
-            n = len(self.sources)
-            self.source_probabilities = [1 / n] * n
+            self.source_probabilities = [1 / num_sources] * num_sources
         else:
             self.source_probabilities = source_probabilities
         self.rng_seed = rng_seed
         self.rng = np.random.RandomState(self.rng_seed)
+        self._source_iterators = [None] * num_sources
 
     def get_batch(self, fold='train', enable_all_appliances=False,
-                  source_id=None):
+                  source_id=None, reset_iterator=False,
+                  validation=False):
+        """
+        Returns
+        -------
+        A Batch object or None if source iterator has hit a StopIteration.
+        """
         if source_id is None:
             n = len(self.sources)
             source_id = self.rng.choice(n, p=self.source_probabilities)
-        batch = self.sources[source_id].get_batch(
-            num_seq_per_batch=self.num_seq_per_batch,
-            fold=fold,
-            enable_all_appliances=enable_all_appliances)
-        batch.after_processing.input = self.apply_processing(
-            batch.before_processing.input, 'input')
-        batch.after_processing.target = self.apply_processing(
-            batch.before_processing.target, 'target')
-        batch.metadata['source_id'] = source_id
-        return batch
+        if reset_iterator or self._source_iterators[source_id] is None:
+            self._source_iterators[source_id] = (
+                self.sources[source_id].get_batch(
+                    num_seq_per_batch=self.num_seq_per_batch,
+                    fold=fold,
+                    enable_all_appliances=enable_all_appliances,
+                    validation=validation))
+        try:
+            batch = self._source_iterators[source_id].next()
+        except StopIteration:
+            self._source_iterators[source_id] = None
+            return None
+        else:
+            batch.after_processing.input = self.apply_processing(
+                batch.before_processing.input, 'input')
+            batch.after_processing.target = self.apply_processing(
+                batch.before_processing.target, 'target')
+            batch.metadata['source_id'] = source_id
+            return batch
 
     def apply_processing(self, data, net_input_or_target):
         """Applies `<input, target>_processing` to `data`.
@@ -90,8 +106,8 @@ class DataPipeline(object):
 
     def report(self):
         report = copy(self.__dict__)
-        report.pop('sources')
-        report.pop('rng')
+        for attr in ['sources', 'rng', '_source_iterators']:
+            report.pop(attr)
         report['sources'] = {
             i: source.report() for i, source in enumerate(self.sources)}
         report['input_processing'] = [

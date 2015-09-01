@@ -24,6 +24,11 @@ class ActivationsSource(Source):
         Each activation is a pd.Series with DatetimeIndex and the following
         metadata attributes: building, appliance, fold.
     """
+    def get_sequence(self, fold='train', enable_all_appliances=False):
+        while True:
+            yield self._get_sequence(
+                fold=fold, enable_all_appliances=enable_all_appliances)
+
     def _distractor_appliances(self, fold):
         all_appliances = set(self.activations[fold].keys())
         distractor_appliances = all_appliances - set([self.target_appliance])
