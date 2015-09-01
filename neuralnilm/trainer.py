@@ -32,7 +32,7 @@ class Trainer(object):
                  loss_aggregation_mode='mean',
                  updates_func=nesterov_momentum,
                  updates_func_kwards=None,
-                 learning_rate_changes=None,
+                 requested_learning_rates=None,
                  callbacks=None,
                  repeat_callbacks=None,
                  epoch_callbacks=None,
@@ -61,8 +61,8 @@ class Trainer(object):
         self.db = mongo_client[mongo_db]
 
         # Training and validation state
-        self.learning_rate_changes = (
-            {0: 1E-2} if learning_rate_changes is None else learning_rate_changes)
+        self.requested_learning_rates = (
+            {0: 1E-2} if requested_learning_rates is None else requested_learning_rates)
         self.experiment_id = "_".join(experiment_id)
         self._train_func = None
         self.metrics = metrics
@@ -205,7 +205,7 @@ class Trainer(object):
     def _single_train_iteration(self):
         # Learning rate changes
         try:
-            self.learning_rate = self.learning_rate_changes[
+            self.learning_rate = self.requested_learning_rates[
                 self.net.train_iterations]
         except KeyError:
             pass
