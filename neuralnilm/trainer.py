@@ -442,8 +442,9 @@ class Trainer(object):
                     # Save
                     filename = os.path.join(
                         self.output_path,
-                        "{:07d}_{}_source{}_seq{}.png".format(
-                            self.net.train_iterations, fold, source_id, seq_i))
+                        "{:07d}_{}_{}_seq{}.png".format(
+                            self.net.train_iterations, fold,
+                            source.__class__.__name__, seq_i))
                     fig.tight_layout()
                     plt.savefig(filename, bbox_inches='tight', dpi=300)
                     plt.close()

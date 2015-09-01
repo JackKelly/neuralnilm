@@ -101,6 +101,7 @@ class Monitor(object):
         all_scores.update({'train': train_scores_df})
 
         fig, ax = plt.subplots(1)
+        source_names = self.source_names
         for fold, scores_df in all_scores.iteritems():
             sources = scores_df['source_id'].unique()
             for source_i in sources:
@@ -113,7 +114,7 @@ class Monitor(object):
 
                 # Plot
                 ax.plot(loss_for_source.index, loss_for_source.values,
-                        label='{:s} (source {:d})'.format(fold, source_i))
+                        label='{} : {}'.format(fold, source_names[source_i]))
 
         ax.legend()
         plt.title('Training costs')
@@ -165,8 +166,7 @@ class Monitor(object):
         fig, axes = plt.subplots(
             nrows=3, ncols=num_cols, sharex="col", sharey=True,
             squeeze=False)
-        # Make some space on the right side for the extra y-axes.
-        fig.subplots_adjust(right=0.65)
+        fig.patch.set_facecolor('white')
         source_names = self.source_names
         for col, source_id in enumerate(validation_sources):
             for row, fold in enumerate(DATA_FOLD_NAMES):
@@ -176,14 +176,15 @@ class Monitor(object):
                     show_axes_labels=(row == 0),
                     show_scales=(col == num_cols-1))
                 if row == 0:
-                    title = "source_id = {:d}\n{}\n{}".format(
-                        source_id, source_names[source_id], fold)
-                else:
-                    title = fold
-                ax.set_title(title)
-                if row == 2:
+                    ax.set_title(source_names[source_id])
+                elif row == 2:
                     ax.set_xlabel('Iteration')
-        plt.subplots_adjust(top=0.91, bottom=0.05, left=0.03, right=0.7)
+                if col == 0:
+                    ax.set_ylabel(fold.replace("_", " ").title(), labelpad=10)
+                ax.patch.set_facecolor((0.95, 0.95, 0.95))
+        plt.subplots_adjust(
+            top=0.91, bottom=0.05, left=0.03, right=0.7,
+            hspace=0.15, wspace=0.1)
         plt.show()
 
     def _plot_validation_scores_for_source_and_fold(self, ax, source_id, fold,
@@ -214,8 +215,8 @@ class Monitor(object):
         # Create multiple independent axes.  Adapted from Joe Kington's answer:
         # http://stackoverflow.com/a/7734614
 
-        # Colors
-        cmap = plt.get_cmap('gnuplot')
+        # Colours
+        cmap = plt.get_cmap('jet')
         n = len(self.validation_metric_names)
         colors = [cmap(i) for i in np.linspace(0, 1, n)]
 
@@ -226,22 +227,27 @@ class Monitor(object):
 
         SEP = 0.2
         if show_scales:
-            for i, axis in enumerate(axes[2:]):
-                # To make the border of the right-most axis visible, we need to
-                # turn the frame on. This hides the other plots, however, so we
-                # need to turn its fill off.
-                axis.set_frame_on(True)
-                axis.patch.set_visible(False)
-
-                # Move the last y-axes spines over to the right by 20% of the
-                # width of the axes
-                axis.spines['right'].set_position(
-                    ('axes', 1 + SEP + (SEP * i)))
+            for i, axis in enumerate(axes):
+                axis.yaxis.tick_right()
+                if i != 0:
+                    # To make the border of the right-most axis visible,
+                    # we need to turn the frame on. This hides the other plots,
+                    # however, so we need to turn its fill off.
+                    axis.set_frame_on(True)
+                    axis.patch.set_visible(False)
+                    # Move the last y-axes spines over to the right.
+                    axis.spines['right'].set_position(
+                        ('axes', 1 + (SEP * i)))
         else:
             for axis in axes:
-                axis.tick_params(labelright=False)
-                for spine in ['top', 'right']:
-                    axis.spines[spine].set_visible(False)
+                axis.tick_params(labelright=False, labelleft=False)
+                axis.yaxis.set_ticks_position('none')
+                axis.spines['right'].set_visible(False)
+
+        for axis in axes:
+            for spine in ['top', 'left', 'bottom']:
+                axis.spines[spine].set_visible(False)
+            axis.xaxis.set_ticks_position('none')
 
         lines = []
         for i, (axis, metric_name, color) in enumerate(
@@ -255,11 +261,12 @@ class Monitor(object):
             line, = axis.plot(
                 df.index, df[metric_name].values, color=color, label=label)
             if show_axes_labels and show_scales:
-                axis.set_ylabel(label, color=color, rotation=0, fontsize=8)
+                axis.set_ylabel(
+                    label, color=color, rotation=0, fontsize=8, va='bottom')
                 if i == 0:
-                    coords = (0.0, 1.1)
+                    coords = (1.05, 1.1)
                 else:
-                    coords = (0.9 + (SEP * i), 1.3)
+                    coords = (1.05 + (SEP * i), 1.1)
                 axis.yaxis.set_label_coords(*coords)
             lines.append(line)
 
