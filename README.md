@@ -9,3 +9,7 @@ over the coming weeks and months!  Be warned!  Also, my efforts will
 be focused on writing code, so I probably won't have time to look at
 the issue queue any time soon so please consider this software to
 essentially be unsupported for the time being.
+
+# Configuration
+You need to create a `~/.neuralnilm` text file to specify some
+parameters.  Please see `example_config_file`.
