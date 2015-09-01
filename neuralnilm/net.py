@@ -1,7 +1,8 @@
 from __future__ import print_function, division
+from copy import copy
 import theano
 import h5py
-from lasagne.layers.helper import get_all_layers, get_output
+from lasagne.layers.helper import get_all_layers, get_output, get_all_params
 from lasagne.layers import FeaturePoolLayer, DenseLayer, Conv1DLayer
 
 import logging
@@ -108,3 +109,15 @@ class Net(object):
         f.close()
         self.train_iterations = iteration
         logger.info('Done loading params from ' + filename + '.')
+
+    def num_trainable_parameters(self):
+        return sum(
+            [p.get_value().size for p in get_all_params(self.layers[-1])])
+
+    def report(self):
+        report = copy(self.__dict__)
+        for attr in ['layers']:
+            report.pop(attr)
+        report.setdefault('architecture', {}).setdefault('0', {})[
+            'num_trainable_parameters'] = self.num_trainable_parameters()
+        return {'net': report}

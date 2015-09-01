@@ -4,7 +4,7 @@ trained_nets
     'data': {
 	'pipeline': {
 	    'sources': {
-		0: {
+		'0': {
 		    'name': 'SyntheticAggregateSource',
 		    'n_train_activations': {'fridge': 100, 'tv': 50},
 		    'input_stats': {'mean': 0.4, 'std': 0.5}
@@ -18,10 +18,10 @@ trained_nets
 	'loss_function': 'mean_squared_error',
 	'update_function': 'NAG',
 	'requested_learning_rates': {
-	    0: 0.001
+	    '0': 0.001
 	},
 	'actual_learning_rates': {
-	    0: 0.001
+	    '0': 0.001
 	},
 	'requested_train_iterations': 500
     },
@@ -31,17 +31,19 @@ trained_nets
 	'lasagne': '0.0.1',
 	'neuralnilm': '2015-01-01'
     },
-    'model': {
-	0: {
-	    'layers': [
-		{'type': 'Input', 'output_shape': (1, 2, 4)},
-		{'type': 'Dense', 'output_shape': (1, 2, 4)},
-		{'type': 'Concat', 'input_layers': [0, 1],
-		 'concat_axis': 0, 'output_shape': (2, 2, 4)}
-	    ],
-	    'num_trainable_parameters': 10000
+    'net': {
+        'architecture': {
+            '0': {
+	       'layers': [
+                  {'type': 'Input', 'output_shape': (1, 2, 4), 'num_units': 100},
+                  {'type': 'Dense', 'output_shape': (1, 2, 4), 'num_units':  50},
+                  {'type': 'Concat', 'input_layers': [0, 1],
+                   'concat_axis': 0, 'output_shape': (2, 2, 4)}
+               ], 
+               'num_trainable_parameters': 10000
+            }
 	},
-	'train_iterations_completed': 100
+	'train_iterations': 100
     }
 }
 
