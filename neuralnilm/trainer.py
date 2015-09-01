@@ -32,7 +32,7 @@ class Trainer(object):
                  loss_aggregation_mode='mean',
                  updates_func=nesterov_momentum,
                  updates_func_kwards=None,
-                 learning_rates=None,
+                 learning_rate_changes=None,
                  callbacks=None,
                  repeat_callbacks=None,
                  epoch_callbacks=None,
@@ -61,8 +61,8 @@ class Trainer(object):
         self.db = mongo_client[mongo_db]
 
         # Training and validation state
-        self.learning_rates = (
-            {0: 1E-2} if learning_rates is None else learning_rates)
+        self.learning_rate_changes = (
+            {0: 1E-2} if learning_rate_changes is None else learning_rate_changes)
         self.experiment_id = "_".join(experiment_id)
         self._train_func = None
         self.metrics = metrics
@@ -147,11 +147,11 @@ class Trainer(object):
             logger.info(
                 "Iteration {:d}: Change learning rate to {:.1E}"
                 .format(self.net.train_iterations, rate))
-            self.db.experiments.find_one_and_update(
+            self.db.trained_nets.find_one_and_update(
                 filter={'_id': self.experiment_id},
                 update={
                     '$set':
-                    {'trainer.learning_rates.{:d}'
+                    {'trainer.actual_learning_rates.{:d}'
                      .format(self.net.train_iterations):
                      float(rate)}},
                 upsert=True
@@ -205,7 +205,8 @@ class Trainer(object):
     def _single_train_iteration(self):
         # Learning rate changes
         try:
-            self.learning_rate = self.learning_rates[self.net.train_iterations]
+            self.learning_rate = self.learning_rate_changes[
+                self.net.train_iterations]
         except KeyError:
             pass
 
@@ -426,8 +427,8 @@ class Trainer(object):
                     # Save
                     filename = os.path.join(
                         self.output_path,
-                        "{:07d}_{}_source{}_seq{}.png"
-                        .format(self.net.train_iterations, fold, source_id, seq_i))
+                        "{:07d}_{}_source{}_seq{}.png".format(
+                            self.net.train_iterations, fold, source_id, seq_i))
                     fig.tight_layout()
                     plt.savefig(filename, bbox_inches='tight', dpi=300)
                     plt.close()
