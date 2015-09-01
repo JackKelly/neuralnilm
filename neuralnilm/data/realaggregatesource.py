@@ -4,7 +4,6 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import nilmtk
-from nilmtk.utils import safe_resample
 from nilmtk.timeframegroup import TimeFrameGroup
 from nilmtk.timeframe import TimeFrame
 from neuralnilm.data.source import Sequence

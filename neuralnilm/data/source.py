@@ -14,11 +14,13 @@ class Sequence(object):
     target : np.ndarray
     all_appliances : pd.DataFrame
         Column names are the appliance names.
+    metadata : dict
     """
     def __init__(self, shape):
         self.input = np.zeros(shape, dtype=np.float32)
         self.target = np.zeros(shape, dtype=np.float32)
         self.all_appliances = pd.DataFrame()
+        self.metadata = {}
 
 
 class Source(object):
