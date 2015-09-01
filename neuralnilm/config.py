@@ -1,10 +1,7 @@
-CONFIG = {
-    "MONGODB_ADDRESS": "",
+from __future__ import print_function, division
+import os
+import ConfigParser
 
-    "PATHS": {  # these paths must already exist
-        'OUTPUT': '/home/dk3810/temp/neural_nilm/output',  # save weights & activations
-        'EXPERIMENT_DEFINITIONS': '/home/dk3810/temp/neural_nilm/experiment_definitions'
-    },
-
-    "JOB_LIST": "/home/dk3810/temp/neural_nilm/job_list.txt"
-}
+config = ConfigParser.RawConfigParser()
+filename = os.path.expanduser('~/.neuralnilm')
+config.read(filename)

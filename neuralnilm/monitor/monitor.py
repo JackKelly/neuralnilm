@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from neuralnilm.consts import DATA_FOLD_NAMES
+from neuralnilm.utils import get_colors
 
 
 class Monitor(object):
@@ -176,9 +177,9 @@ class Monitor(object):
                     show_axes_labels=(row == 0),
                     show_scales=(col == num_cols-1))
                 if row == 0:
-                    ax.set_title(source_names[source_id])
+                    ax.set_title(source_names[source_id], position=(.5, 1.05))
                 elif row == 2:
-                    ax.set_xlabel('Iteration')
+                    ax.set_xlabel('Iteration', labelpad=10)
                 if col == 0:
                     ax.set_ylabel(fold.replace("_", " ").title(), labelpad=10)
                 ax.patch.set_facecolor((0.95, 0.95, 0.95))
@@ -216,9 +217,8 @@ class Monitor(object):
         # http://stackoverflow.com/a/7734614
 
         # Colours
-        cmap = plt.get_cmap('jet')
         n = len(self.validation_metric_names)
-        colors = [cmap(i) for i in np.linspace(0, 1, n)]
+        colors = get_colors(n)
 
         # Twin the x-axis to make independent y-axes.
         axes = [ax]

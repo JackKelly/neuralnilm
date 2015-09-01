@@ -18,7 +18,7 @@ from .utils import (sfloatX, ndim_tensor, ANSI, none_to_dict, none_to_list,
                     two_level_series_to_dict)
 from neuralnilm.data.datathread import DataThread
 from neuralnilm.consts import DATA_FOLD_NAMES, COLLECTIONS
-from neuralnilm.config import CONFIG
+from neuralnilm.config import config
 
 import logging
 logger = logging.getLogger(__name__)
@@ -88,9 +88,8 @@ class Trainer(object):
                 raise KeyboardInterrupt()
 
         # Output path
-        self.output_path = os.path.join(
-            *([CONFIG['PATHS']['OUTPUT']] + experiment_id)
-        )
+        path_list = [config.get('Paths', 'output')] + experiment_id
+        self.output_path = os.path.join(*path_list)
         try:
             os.makedirs(self.output_path)
         except OSError as os_error:

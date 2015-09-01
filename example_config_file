@@ -1,0 +1,6 @@
+[MongoDB]
+address = 127.0.0.1
+
+[Paths]
+output = /home/dk3810/temp/neural_nilm/output
+experiment_definitions = /home/dk3810/temp/neural_nilm/experiment_definitions

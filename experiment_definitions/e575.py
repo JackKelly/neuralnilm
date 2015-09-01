@@ -1,5 +1,4 @@
 from __future__ import print_function, division
-import os
 
 from lasagne.layers import InputLayer, DenseLayer, ReshapeLayer
 
@@ -10,7 +9,6 @@ from neuralnilm.data.processing import DivideBy
 from neuralnilm.net import Net
 from neuralnilm.trainer import Trainer
 from neuralnilm.metrics import Metrics
-from neuralnilm.config import CONFIG
 
 
 NILMTK_FILENAME = '/data/mine/vadeec/merged/ukdale.h5'

@@ -134,3 +134,9 @@ def two_level_series_to_dict(series):
     for (k0, k1), value in series.iteritems():
         dictionary.setdefault(k0, {})[k1] = value
     return dictionary
+
+
+def get_colors(self, n, cmap_name='jet'):
+    cmap = plt.get_cmap(cmap_name)
+    colors = [cmap(i) for i in np.linspace(0, 1, n)]
+    return colors
