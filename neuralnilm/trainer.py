@@ -158,10 +158,12 @@ class Trainer(object):
             )
             self._learning_rate.set_value(rate)
 
-    def fit(self, num_iterations=None):
+    def _start_data_thread(self):
         self.data_thread = DataThread(self.data_pipeline)
         self.data_thread.start()
 
+    def fit(self, num_iterations=None):
+        self._start_data_thread()
         run_menu = False
 
         try:
@@ -272,6 +274,9 @@ class Trainer(object):
             callback(self)
 
     def validate(self):
+        # Stop data thread otherwise we get intermittent issues with
+        # the batch generator complaining that it's already running.
+        self.data_thread.stop()
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
         for source_id, source in enumerate(sources):
@@ -279,8 +284,8 @@ class Trainer(object):
                 scores_accumulator = None
                 n = 0
                 batch = self.data_thread.data_pipeline.get_batch(
-                    fold=fold, source_id=source_id, reset_iterator=True,
-                    validation=True)
+                    fold=fold, source_id=source_id,
+                    reset_iterator=True, validation=True)
                 while True:
                     output = output_func(batch.after_processing.input)
                     scores_for_batch = self.metrics.compute_metrics(
@@ -306,6 +311,7 @@ class Trainer(object):
                     'fold': fold,
                     'scores': two_level_series_to_dict(scores)
                 })
+        self._start_data_thread()
 
     def _get_train_func(self):
         if self._train_func is None:

@@ -145,6 +145,18 @@ class Monitor(object):
                         metric_type + '.' + metric_name)
         return self._validation_metric_names
 
+    @property
+    def source_names(self):
+        """
+        Returns
+        -------
+        source_names : dict
+        """
+        metadata = self.db.trained_nets.find_one({'_id': self.experiment_id})
+        sources = metadata['data']['pipeline']['sources']
+        source_names = {int(i): sources[i]['name'] for i in sources}
+        return source_names
+
     def _plot_validation_scores(self):
         validation_sources = self.db.validation_scores.distinct(
             key='source_id', filter={'experiment_id': self.experiment_id})
@@ -155,6 +167,7 @@ class Monitor(object):
             squeeze=False)
         # Make some space on the right side for the extra y-axes.
         fig.subplots_adjust(right=0.65)
+        source_names = self.source_names
         for col, source_id in enumerate(validation_sources):
             for row, fold in enumerate(DATA_FOLD_NAMES):
                 ax = axes[row, col]
@@ -163,12 +176,14 @@ class Monitor(object):
                     show_axes_labels=(row == 0),
                     show_scales=(col == num_cols-1))
                 if row == 0:
-                    title = "source_id = {:d}\n{}".format(source_id, fold)
+                    title = "source_id = {:d}\n{}\n{}".format(
+                        source_id, source_names[source_id], fold)
                 else:
                     title = fold
                 ax.set_title(title)
                 if row == 2:
                     ax.set_xlabel('Iteration')
+        plt.subplots_adjust(top=0.91, bottom=0.05, left=0.03, right=0.7)
         plt.show()
 
     def _plot_validation_scores_for_source_and_fold(self, ax, source_id, fold,
@@ -209,6 +224,7 @@ class Monitor(object):
         for metric_name in self.validation_metric_names[1:]:
             axes.append(ax.twinx())
 
+        SEP = 0.2
         if show_scales:
             for i, axis in enumerate(axes[2:]):
                 # To make the border of the right-most axis visible, we need to
@@ -219,7 +235,8 @@ class Monitor(object):
 
                 # Move the last y-axes spines over to the right by 20% of the
                 # width of the axes
-                axis.spines['right'].set_position(('axes', 1.1 + (0.1 * i)))
+                axis.spines['right'].set_position(
+                    ('axes', 1 + SEP + (SEP * i)))
         else:
             for axis in axes:
                 axis.tick_params(labelright=False)
@@ -242,7 +259,7 @@ class Monitor(object):
                 if i == 0:
                     coords = (0.0, 1.1)
                 else:
-                    coords = (0.95 + (0.1 * i), 1.3)
+                    coords = (0.9 + (SEP * i), 1.3)
                 axis.yaxis.set_label_coords(*coords)
             lines.append(line)
 
