@@ -153,7 +153,7 @@ class Monitor(object):
         -------
         source_names : dict
         """
-        metadata = self.db.trained_nets.find_one({'_id': self.experiment_id})
+        metadata = self.db.experiments.find_one({'_id': self.experiment_id})
         sources = metadata['data']['pipeline']['sources']
         source_names = {int(i): sources[i]['name'] for i in sources}
         return source_names

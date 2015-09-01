@@ -72,7 +72,7 @@ class Trainer(object):
 
         # Check if this experiment already exists in database
         delete_or_quit = None
-        if self.db.trained_nets.find_one({'_id': self.experiment_id}):
+        if self.db.experiments.find_one({'_id': self.experiment_id}):
             delete_or_quit = raw_input(
                 "Database already has an experiment with _id == {}."
                 " Should the old experiment be deleted"
@@ -80,7 +80,7 @@ class Trainer(object):
                 " Or quit? [Q/d] ".format(self.experiment_id)).lower()
             if delete_or_quit == 'd':
                 logger.info("Deleting documents for old experiment.")
-                self.db.trained_nets.delete_one({'_id': self.experiment_id})
+                self.db.experiments.delete_one({'_id': self.experiment_id})
                 for collection in COLLECTIONS:
                     self.db[collection].delete_many(
                         {'experiment_id': self.experiment_id})
@@ -129,7 +129,7 @@ class Trainer(object):
         self.epoch_callbacks = none_to_list(epoch_callbacks)
 
         # Log to database
-        self.db.trained_nets.insert_one(sanitise_dict_for_mongo(self.report()))
+        self.db.experiments.insert_one(sanitise_dict_for_mongo(self.report()))
 
     @property
     def learning_rate(self):
@@ -147,7 +147,7 @@ class Trainer(object):
             logger.info(
                 "Iteration {:d}: Change learning rate to {:.1E}"
                 .format(self.net.train_iterations, rate))
-            self.db.trained_nets.find_one_and_update(
+            self.db.experiments.find_one_and_update(
                 filter={'_id': self.experiment_id},
                 update={
                     '$set':
@@ -182,7 +182,7 @@ class Trainer(object):
         logger.info("Starting training for {} iterations."
                     .format(num_iterations))
 
-        self.db.trained_nets.find_one_and_update(
+        self.db.experiments.find_one_and_update(
             filter={'_id': self.experiment_id},
             update={
                 '$set':
