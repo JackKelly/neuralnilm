@@ -180,6 +180,15 @@ class Trainer(object):
         logger.info("Starting training for {} iterations."
                     .format(num_iterations))
 
+        self.db.trained_nets.find_one_and_update(
+            filter={'_id': self.experiment_id},
+            update={
+                '$set':
+                {'trainer.requested_train_iterations': num_iterations}
+            },
+            upsert=True
+        )
+
         print("   Update # |  Train cost  | Secs per update | Source ID")
         print("------------|--------------|-----------------|-----------")
 

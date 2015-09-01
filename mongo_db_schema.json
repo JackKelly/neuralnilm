@@ -17,10 +17,13 @@ trained_nets
     'trainer': {
 	'loss_function': 'mean_squared_error',
 	'update_function': 'NAG',
-	'learning_rates': {
+	'requested_learning_rates': {
 	    0: 0.001
 	},
-	'train_iterations_planned': 500
+	'actual_learning_rates': {
+	    0: 0.001
+	},
+	'requested_train_iterations': 500
     },
     'versions': {
 	'theano': '0.7.0',
