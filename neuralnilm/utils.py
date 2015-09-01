@@ -4,6 +4,7 @@ from sys import stdout
 import csv
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import theano
 import theano.tensor as T
 from neuralnilm.consts import DATA_FOLD_NAMES
@@ -136,7 +137,7 @@ def two_level_series_to_dict(series):
     return dictionary
 
 
-def get_colors(self, n, cmap_name='jet'):
+def get_colors(n, cmap_name='jet'):
     cmap = plt.get_cmap(cmap_name)
     colors = [cmap(i) for i in np.linspace(0, 1, n)]
     return colors

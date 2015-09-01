@@ -3,10 +3,13 @@ from copy import copy
 import theano
 import h5py
 from lasagne.layers.helper import get_all_layers, get_output, get_all_params
-from lasagne.layers import FeaturePoolLayer, DenseLayer, Conv1DLayer
+from neuralnilm.utils import none_to_list
 
 import logging
 logger = logging.getLogger(__name__)
+
+
+VALID_TAGS = ['AE', 'RNN', '1DConv', 'tied weights']
 
 
 class Net(object):
@@ -15,11 +18,22 @@ class Net(object):
     ----------
     layers : list
     train_iterations : int
+    description : string
+    tags : list of strings
+       from controlled vocab (see VALID_TAGS)
+    predecessor_experiment : string
     """
-    def __init__(self, output_layer):
+    def __init__(self, output_layer, description="", tags=None,
+                 predecessor_experiment=""):
         self.layers = get_all_layers(output_layer)
         self._deterministic_output_func = None
         self.train_iterations = 0
+        self.description = description
+        self.tags = none_to_list(tags)
+        for tag in self.tags:
+            if tag not in VALID_TAGS:
+                raise ValueError("{} is not a valid tag!".format(tag))
+        self.predecessor_experiment = predecessor_experiment
 
     @property
     def deterministic_output_func(self):
@@ -114,10 +128,38 @@ class Net(object):
         return sum(
             [p.get_value().size for p in get_all_params(self.layers[-1])])
 
+    def description_of_architecture(self):
+        layers = []
+        for layer in self.layers:
+            layer_dict = {
+                'type': layer.__class__.__name__,
+                'output_shape': layer.output_shape
+            }
+            for attr in ['num_units', 'concat_axis', 'input_layers']:
+                try:
+                    value = getattr(layer, attr)
+                except AttributeError:
+                    pass
+                else:
+                    layer_dict[attr] = value
+            try:
+                value = layer.nonlinearity
+            except AttributeError:
+                pass
+            else:
+                layer_dict['nonlinearity'] = value.__name__
+            layers.append(layer_dict)
+
+        return {
+            'layers': layers,
+            'num_trainable_parameters': self.num_trainable_parameters()
+        }
+
     def report(self):
         report = copy(self.__dict__)
-        for attr in ['layers']:
+        for attr in [
+                'layers', '_deterministic_output_func', 'train_iterations']:
             report.pop(attr)
-        report.setdefault('architecture', {}).setdefault('0', {})[
-            'num_trainable_parameters'] = self.num_trainable_parameters()
+        report.setdefault('architecture', {})[0] = (
+            self.description_of_architecture())
         return {'net': report}

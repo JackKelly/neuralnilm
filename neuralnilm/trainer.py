@@ -62,7 +62,8 @@ class Trainer(object):
 
         # Training and validation state
         self.requested_learning_rates = (
-            {0: 1E-2} if requested_learning_rates is None else requested_learning_rates)
+            {0: 1E-2} if requested_learning_rates is None else
+            requested_learning_rates)
         self.experiment_id = "_".join(experiment_id)
         self._train_func = None
         self.metrics = metrics
@@ -127,8 +128,26 @@ class Trainer(object):
         self.repeat_callbacks = callbacks_dataframe(repeat_callbacks)
         self.epoch_callbacks = none_to_list(epoch_callbacks)
 
-        # Log to database
-        self.db.experiments.insert_one(sanitise_dict_for_mongo(self.report()))
+    def submit_report(self, additional_report_contents=None):
+        """Submit report to database.
+
+        Parameters
+        ----------
+        additional_report_contents : list of tuples of (list of keys, dict)
+        e.g.
+        >>> contents = [(['data'], {'activations': LOADER_CONFIG})]
+        >>> trainer.submit_report(additional_report_contents=contents)
+        """
+        report = self.report()
+        if additional_report_contents is not None:
+            for (keys, update) in additional_report_contents:
+                dict_to_update = report
+                for key in keys:
+                    dict_to_update = dict_to_update[key]
+                dict_to_update.update(update)
+        report = sanitise_dict_for_mongo(report)
+        self.db.experiments.insert_one(report)
+        return report
 
     @property
     def learning_rate(self):
@@ -385,10 +404,12 @@ class Trainer(object):
         for attr in [
                 'data_pipeline', 'loss_func', 'net', 'repeat_callbacks',
                 'callbacks', 'epoch_callbacks', 'db', 'experiment_id',
-                'metrics', '_learning_rate', '_train_func', 'updates_func']:
+                'metrics', '_learning_rate', '_train_func', 'updates_func',
+                'min_train_cost']:
             report['trainer'].pop(attr, None)
         report['trainer']['metrics'] = self.metrics.report()
         report['data'] = self.data_pipeline.report()
+        report['net'] = self.net.report()
         report['_id'] = self.experiment_id
         return report
 

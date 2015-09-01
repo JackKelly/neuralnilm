@@ -14,26 +14,26 @@ from neuralnilm.metrics import Metrics
 NILMTK_FILENAME = '/data/mine/vadeec/merged/ukdale.h5'
 SEQ_LENGTHS = {'kettle': 256}
 SAMPLE_PERIOD = 6
-STRIDE = 4
+STRIDE = None
 APPLIANCES = ['kettle', 'microwave', 'washing machine']
-
+WINDOWS = {
+    'train': {
+        1: ("2014-01-01", "2014-02-01")
+    },
+    'unseen_activations_of_seen_appliances': {
+        1: ("2014-02-02", "2014-02-08")
+    },
+    'unseen_appliances': {
+        2: ("2013-06-01", "2013-06-07")
+    }
+}
 
 LOADER_CONFIG = {
     'nilmtk_activations': dict(
         appliances=APPLIANCES,
         filename=NILMTK_FILENAME,
         sample_period=SAMPLE_PERIOD,
-        windows={
-            'train': {
-                1: ("2014-01-01", "2014-02-01")
-            },
-            'unseen_activations_of_seen_appliances': {
-                1: ("2014-02-02", "2014-02-08")
-            },
-            'unseen_appliances': {
-                2: ("2013-06-01", "2013-06-07")
-            }
-        }
+        windows=WINDOWS
     )
 }
 
@@ -61,13 +61,8 @@ def run(root_experiment_name):
                 ]
             )
 
-            """
-            trainer.submit_initial_report(
-                additional_report_contents={
-                    'activations': LOADER_CONFIG
-                    }
-            )
-            """
+            contents = [(['data'], {'activations': LOADER_CONFIG})]
+            trainer.submit_report(additional_report_contents=contents)
 
             # Run!
             trainer.fit(1000)
@@ -112,7 +107,8 @@ def ae(batch):
         shape=target_shape
     )
 
-    net = Net(output_layer)
+    net = Net(output_layer, tags=['AE'],
+              description="Just testing new NeuralNILM code!")
     return net
 
 
