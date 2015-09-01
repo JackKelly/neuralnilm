@@ -16,12 +16,14 @@ class Batch(object):
     metadata : dict
     before_processing : BatchSeq
     after_processing : BatchSeq
+    weights : None or np.ndarray
     """
     def __init__(self):
         self.all_appliances = []
         self.metadata = {}
         self.before_processing = BatchSeq()
         self.after_processing = BatchSeq()
+        self.weights = None
 
     @property
     def input(self):

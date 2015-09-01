@@ -146,6 +146,14 @@ class StrideSource(Source):
             seq = Sequence(self.seq_length)
             seq.input = get_data('mains')
             seq.target = get_data('target')
+
+            # Set mask
+            seq.weights = np.ones((self.seq_length, 1), dtype=np.float32)
+            n_zeros_to_pad = self.seq_length - len(data_for_seq)
+            if n_zeros_to_pad > 0:
+                seq.weights[-n_zeros_to_pad:, 0] = 0
+
+            # Set metadata
             seq.metadata = {
                 'seq_i': seq_i,
                 'building_name': building_name,

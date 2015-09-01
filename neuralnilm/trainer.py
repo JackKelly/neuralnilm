@@ -105,9 +105,9 @@ class Trainer(object):
                 raise
 
         # Loss and updates
-        def aggregated_loss_func(prediction, target):
+        def aggregated_loss_func(prediction, target, weights=None):
             loss = loss_func(prediction, target)
-            return aggregate(loss, mode=loss_aggregation_mode)
+            return aggregate(loss, mode=loss_aggregation_mode, weights=weights)
         self.loss_func_name = loss_func.__name__
         self.loss_func = aggregated_loss_func
         self.updates_func_name = updates_func.__name__
@@ -213,7 +213,10 @@ class Trainer(object):
         batch = self.data_thread.get_batch()
         if batch is None:
             raise StopIteration()
-        train_cost = self._get_train_func()(batch.input, batch.target)
+        if batch.weights is None:
+            batch.weights = np.ones(batch.target.shape, dtype=np.float32)
+        train_cost = self._get_train_func()(
+            batch.input, batch.target, batch.weights)
         train_cost = float(train_cost.flatten()[0])
         duration = time() - time0
 
@@ -295,31 +298,21 @@ class Trainer(object):
 
     def _get_train_func(self):
         if self._train_func is None:
-            self._train_func = self._compile_cost_func(validation=False)
+            self._train_func = self._compile_train_func()
         return self._train_func
 
-    def _get_validation_cost_func(self):
-        if self._validation_cost_func is None:
-            self._validation_cost_func = self._compile_cost_func(
-                validation=True)
-        return self._validation_cost_func
-
-    def _compile_cost_func(self, validation):
-        logger.info("Compiling " + ("validation" if validation else "train") +
-                    " cost function...")
+    def _compile_train_func(self):
+        logger.info("Compiling train cost function...")
         network_input = self.net.symbolic_input()
-        network_output = self.net.symbolic_output(deterministic=validation)
+        network_output = self.net.symbolic_output(deterministic=False)
         target_var = ndim_tensor(name='target', ndim=network_output.ndim)
-        loss = self.loss_func(network_output, target_var)
-        if validation:
-            updates = None
-        else:
-            # Training
-            all_params = get_all_params(self.net.layers[-1], trainable=True)
-            updates = self.updates_func(
-                loss, all_params, learning_rate=self._learning_rate)
+        mask_var = ndim_tensor(name='mask', ndim=network_output.ndim)
+        loss = self.loss_func(network_output, target_var, mask_var)
+        all_params = get_all_params(self.net.layers[-1], trainable=True)
+        updates = self.updates_func(
+            loss, all_params, learning_rate=self._learning_rate)
         train_func = theano.function(
-            inputs=[network_input, target_var],
+            inputs=[network_input, target_var, mask_var],
             outputs=loss,
             updates=updates,
             on_unused_input='warn',

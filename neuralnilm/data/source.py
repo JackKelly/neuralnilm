@@ -15,12 +15,14 @@ class Sequence(object):
     all_appliances : pd.DataFrame
         Column names are the appliance names.
     metadata : dict
+    weights : np.ndarray or None
     """
     def __init__(self, shape):
         self.input = np.zeros(shape, dtype=np.float32)
         self.target = np.zeros(shape, dtype=np.float32)
         self.all_appliances = pd.DataFrame()
         self.metadata = {}
+        self.weights = None
 
 
 class Source(object):
@@ -54,6 +56,7 @@ class Source(object):
                 break
             input_sequences = []
             target_sequences = []
+            weights = []
             all_appliances = {}
             for i in range(num_seq_per_batch):
                 try:
@@ -61,10 +64,14 @@ class Source(object):
                 except StopIteration:
                     stop = True
                     seq = Sequence((self.seq_length, 1))
+                    seq.weights = np.zeros(
+                        (self.seq_length, 1), dtype=np.float32)
                 if enable_all_appliances:
                     all_appliances[i] = seq.all_appliances
                 input_sequences.append(seq.input[np.newaxis, :])
                 target_sequences.append(seq.target[np.newaxis, :])
+                if seq.weights is not None:
+                    weights.append(seq.weights[np.newaxis, :])
 
             batch = Batch()
             batch.metadata['fold'] = fold
@@ -76,6 +83,8 @@ class Source(object):
             if enable_all_appliances:
                 batch.all_appliances = pd.concat(
                     all_appliances, axis=1, names=['sequence', 'appliance'])
+            if weights:
+                batch.weights = np.concatenate(weights)
             yield batch
             batch_i += 1
 
