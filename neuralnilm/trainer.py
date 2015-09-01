@@ -5,6 +5,7 @@ import shutil
 from copy import copy
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import theano
 from time import time
 from pymongo import MongoClient
@@ -375,6 +376,62 @@ class Trainer(object):
         report['data'] = self.data_pipeline.report()
         report['_id'] = self.experiment_id
         return report
+
+    def save_params(self):
+        logger.info(
+            "Iteration {}: Saving params.".format(self.net.train_iterations))
+        filename = os.path.join(self.output_path, 'net_params.h5')
+        self.net.save_params(filename=filename)
+        logger.info("Done saving params.")
+
+    def plot_estimates(self, num_seqs=1, linewidth=0.5):
+        logger.info(
+            "Iteration {}: Plotting estimates."
+            .format(self.net.train_iterations))
+        sources = self.data_thread.data_pipeline.sources
+        output_func = self.net.deterministic_output_func
+        for source_id, source in enumerate(sources):
+            for fold in DATA_FOLD_NAMES:
+                batch = self.data_thread.data_pipeline.get_batch(
+                    fold=fold, source_id=source_id,
+                    reset_iterator=True, validation=True)
+                output = output_func(batch.input)
+                num_seq_per_batch, output_seq_length, _ = output.shape
+                num_seqs = min(num_seqs, num_seq_per_batch)
+                for seq_i in range(num_seqs):
+                    fig, axes = plt.subplots(3)
+
+                    # Network output
+                    ax = axes[0]
+                    ax.set_title('Network output')
+                    ax.plot(output[seq_i], linewidth=linewidth)
+                    ax.set_xlim([0, output_seq_length])
+
+                    # Plot target
+                    ax = axes[1]
+                    ax.set_title('Target')
+                    ax.plot(batch.target[seq_i], linewidth=linewidth)
+                    ax.set_xlim([0, output_seq_length])
+
+                    # Plot network input
+                    ax = axes[2]
+                    ax.set_title('Input')
+                    ax.plot(batch.input[seq_i], linewidth=linewidth)
+                    ax.set_xlim([0, batch.input.shape[1]])
+
+                    # Formatting
+                    for ax in axes:
+                        ax.grid(True)
+
+                    # Save
+                    filename = os.path.join(
+                        self.output_path,
+                        "{:07d}_{}_source{}_seq{}.png"
+                        .format(self.net.train_iterations, fold, source_id, seq_i))
+                    fig.tight_layout()
+                    plt.savefig(filename, bbox_inches='tight', dpi=300)
+                    plt.close()
+        logger.info("Done plotting.")
 
 
 class TrainingError(Exception):
