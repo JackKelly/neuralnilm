@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from neuralnilm.consts import DATA_FOLD_NAMES
 from neuralnilm.utils import get_colors
+from neuralnilm.config import config
 
 
 class Monitor(object):
@@ -24,7 +25,8 @@ class Monitor(object):
         self.update_period = update_period
         self.max_num_lines = max_num_lines
         self._last_iteration_processed = {'train': 0, 'validation': 0}
-        self.mongo_client = pymongo.MongoClient()
+        self.mongo_host = config.get("MongoDB", "address")
+        self.mongo_client = pymongo.MongoClient(self.mongo_host)
         self.db = self.mongo_client[mongo_db]
         self.mongo_db = mongo_db
         self._validation_metric_names = None
@@ -55,7 +57,7 @@ class Monitor(object):
         return bool(document)
 
     def _get_validation_mse(self):
-        monary = Monary()
+        monary = Monary(host=self.mongo_host)
 
         def get_mse_for_fold(fold):
             iterations, loss, source_id = monary.query(
@@ -81,7 +83,7 @@ class Monitor(object):
 
     def _get_train_costs(self):
         # Get train scores
-        monary = Monary()
+        monary = Monary(host=self.mongo_host)
         iterations, loss, source_id = monary.query(
             db=self.mongo_db,
             coll='train_scores',
@@ -193,7 +195,7 @@ class Monitor(object):
                                                     show_scales):
         fields = ['iteration'] + ['scores.' + metric_name for metric_name in
                                   self.validation_metric_names]
-        monary = Monary()
+        monary = Monary(host=self.mongo_host)
         result = monary.query(
             db=self.mongo_db,
             coll='validation_scores',
