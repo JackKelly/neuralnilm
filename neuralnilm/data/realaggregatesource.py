@@ -318,4 +318,4 @@ class RealAggregateSource(ActivationsSource):
     def _attrs_to_remove_for_report(cls):
         return [
             'activations', 'rng', 'mains', 'mains_good_sections',
-            'sections_with_no_target']
+            'sections_with_no_target', 'all_gaps']
