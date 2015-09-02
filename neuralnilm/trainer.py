@@ -36,7 +36,8 @@ class Trainer(object):
                  callbacks=None,
                  repeat_callbacks=None,
                  epoch_callbacks=None,
-                 metrics=None):
+                 metrics=None,
+                 num_seqs_to_plot=8):
         """
         Parameters
         ----------
@@ -71,6 +72,7 @@ class Trainer(object):
         self.net = net
         self.data_pipeline = data_pipeline
         self.min_train_cost = float("inf")
+        self.num_seqs_to_plot = num_seqs_to_plot
 
         # Check if this experiment already exists in database
         delete_or_quit = None
@@ -430,7 +432,7 @@ class Trainer(object):
         self.net.save_params(filename=filename)
         logger.info("Done saving params.")
 
-    def plot_estimates(self, num_seqs=1, linewidth=0.5):
+    def plot_estimates(self, linewidth=0.5):
         logger.info(
             "Iteration {}: Plotting estimates."
             .format(self.net.train_iterations))
@@ -443,7 +445,7 @@ class Trainer(object):
                     reset_iterator=True, validation=True)
                 output = output_func(batch.input)
                 num_seq_per_batch, output_seq_length, _ = output.shape
-                num_seqs = min(num_seqs, num_seq_per_batch)
+                num_seqs = min(self.num_seqs_to_plot, num_seq_per_batch)
                 for seq_i in range(num_seqs):
                     fig, axes = plt.subplots(3)
 
