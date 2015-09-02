@@ -16,6 +16,7 @@ psycopg2
 pyparsing
 tables
 h5py
+pymongo
 -e git+git@github.com:nilmtk/nilm_metadata.git#egg=nilm_metadata-master
 -e git+git@github.com:nilmtk/nilmtk.git#egg=nilmtk-master
 -e git+git@github.com:Theano/Theano.git#egg=Theano-master
