@@ -146,6 +146,8 @@ class StrideSource(Source):
             seq = Sequence(self.seq_length)
             seq.input = get_data('mains')
             seq.target = get_data('target')
+            assert len(seq.input) == self.seq_length
+            assert len(seq.target) == self.seq_length
 
             # Set mask
             seq.weights = np.ones((self.seq_length, 1), dtype=np.float32)

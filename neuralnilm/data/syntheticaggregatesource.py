@@ -71,6 +71,8 @@ class SyntheticAggregateSource(ActivationsSource):
 
         seq.input = seq.input[:, np.newaxis]
         seq.target = seq.target[:, np.newaxis]
+        assert len(seq.input) == self.seq_length
+        assert len(seq.target) == self.seq_length        
         if enable_all_appliances:
             seq.all_appliances = pd.DataFrame(all_appliances)
         return seq

@@ -155,12 +155,11 @@ class RealAggregateSource(ActivationsSource):
         assert len(seq.input) == self.seq_length
         return seq
 
-    def _has_sufficient_samples(self, data, threshold=0.8):
+    def _has_sufficient_samples(self, data, start, end, threshold=0.8):
         if len(data) < 2:
             return False
         num_expected_samples = (
-            (data.index[-1] - data.index[0]).total_seconds() /
-            self.sample_period)
+            (end - start).total_seconds() / self.sample_period)
         hit_rate = len(data) / num_expected_samples
         return (hit_rate >= threshold)
 
@@ -194,7 +193,8 @@ class RealAggregateSource(ActivationsSource):
                     mains_for_activ = mains[start:end]
                     if (start < mains.index[0] or
                             end > mains.index[-1] or not
-                            self._has_sufficient_samples(mains_for_activ)):
+                            self._has_sufficient_samples(
+                                mains_for_activ, start, end)):
                         activations_to_remove.append(i)
                 if activations_to_remove:
                     logger.info(
@@ -222,6 +222,8 @@ class RealAggregateSource(ActivationsSource):
 
         seq.input = seq.input[:, np.newaxis]
         seq.target = seq.target[:, np.newaxis]
+        assert len(seq.input) == self.seq_length
+        assert len(seq.target) == self.seq_length
         return seq
 
     def _get_sequence_which_includes_target(self, fold):
@@ -279,8 +281,13 @@ class RealAggregateSource(ActivationsSource):
 
             # Get mains
             mains_for_building = self.mains[fold][activation.building]
-            mains = mains_for_building[mains_start:mains_end]
-            seq.input = mains.values
+            # load some additional data to make sure we have enough samples
+            mains_end_extended = mains_end + timedelta(
+                seconds=self.sample_period * 2)
+            mains = mains_for_building[mains_start:mains_end_extended]
+            seq.input = mains.values[:self.seq_length]
+            if len(seq.input) != self.seq_length:
+                continue
             return seq
         raise RuntimeError("No valid sequences found after {} retries!"
                            .format(MAX_RETRIES))
