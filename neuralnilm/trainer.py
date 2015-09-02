@@ -243,14 +243,16 @@ class Trainer(object):
         # Training
         time0 = time()
         batch = self.data_thread.get_batch()
+        time1 = time()
         if batch is None:
             raise StopIteration()
         if batch.weights is None:
             batch.weights = np.ones(batch.target.shape, dtype=np.float32)
+        time2 = time()
         train_cost = self._get_train_func()(
             batch.input, batch.target, batch.weights)
         train_cost = float(train_cost.flatten()[0])
-        duration = time() - time0
+        time3 = time()
 
         # Save training costs
         score = {
@@ -260,6 +262,8 @@ class Trainer(object):
             'source_id': batch.metadata['source_id']
         }
         self.db.train_scores.insert_one(score)
+        time4 = time()
+        duration = time4 - time0
 
         # Print training costs
         is_best = train_cost <= self.min_train_cost
@@ -287,6 +291,11 @@ class Trainer(object):
         callbacks = self.callbacks[
             self.callbacks['iteration'] == self.net.train_iterations]
         self._run_callbacks(callbacks)
+        time5 = time()
+
+        print(
+            "get_batch={:.3f}; np.ones={:.3f}; train={:.3f}, db={:.3f}; rest={:.3f}"
+            .format(time1-time0, time2-time1, time3-time2, time4-time3, time5-time4))
 
     def _run_callbacks(self, df):
         for callback in df['function']:
