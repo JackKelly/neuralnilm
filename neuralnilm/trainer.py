@@ -360,7 +360,7 @@ class Trainer(object):
         print("------------------ OPTIONS ------------------")
         print("d: Enter debugger.")
         print("s: Save plots and params.")
-        print("q: Quit all experiments.")
+        print("q: Quit this experiment.")
         print("e: Change number of epochs to train this net (currently {})."
               .format(epochs))
         print("c: Continue training.")
