@@ -42,6 +42,8 @@ def _get_next_job():
 def _run_job(next_job):
     logger.info("Running {}".format(next_job))
     exec("import {:s}".format(next_job))
+    from neuralnilm.utils import configure_logger
+    configure_logger('neuralnilm.log')
     eval("{next_job}.run('{next_job}')".format(next_job=next_job))
 
 
