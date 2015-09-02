@@ -43,19 +43,14 @@ WINDOWS = {
     }
 }
 
-LOADER_CONFIG = {
-    'nilmtk_activations': dict(
+
+def run(root_experiment_name):
+    activations = load_nilmtk_activations(
         appliances=APPLIANCES,
         filename=NILMTK_FILENAME,
         sample_period=SAMPLE_PERIOD,
         windows=WINDOWS
     )
-}
-
-
-def run(root_experiment_name):
-    activations = load_nilmtk_activations(
-        **LOADER_CONFIG['nilmtk_activations'])
 
     for get_net in [ae]:
         for target_appliance in ['kettle']:
@@ -80,8 +75,8 @@ def run(root_experiment_name):
                 ]
             )
 
-            contents = [(['data'], {'activations': LOADER_CONFIG})]
-            trainer.submit_report(additional_report_contents=contents)
+            report = trainer.submit_report()
+            print(report)
 
             # Run!
             trainer.fit(None)

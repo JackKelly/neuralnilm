@@ -7,8 +7,13 @@ experiments
 	    'sources': {
 		'0': {
 		    'name': 'SyntheticAggregateSource',
-		    'n_train_activations': {'fridge': 100, 'tv': 50},
-		    'input_stats': {'mean': 0.4, 'std': 0.5}
+		    'num_activations': {
+			'train': {
+			    'fridge': {
+				'UK-DALE_building_1': 100
+			    }
+			}
+		    }
 		}
 	    },
 	    'input_processing': []

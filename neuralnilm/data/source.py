@@ -5,6 +5,9 @@ import pandas as pd
 
 from .batch import Batch
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class Sequence(object):
     """
@@ -27,6 +30,8 @@ class Sequence(object):
 
 class Source(object):
     def __init__(self, rng_seed=None, num_batches_for_validation=16):
+        logger.info("------------- INITIALISING {} --------------"
+                    .format(self.__class__.__name__))
         self.rng_seed = rng_seed
         self.rng = np.random.RandomState(rng_seed)
         self.num_batches_for_validation = num_batches_for_validation

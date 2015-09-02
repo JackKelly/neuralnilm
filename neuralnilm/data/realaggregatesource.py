@@ -156,6 +156,8 @@ class RealAggregateSource(ActivationsSource):
         return seq
 
     def _has_sufficient_samples(self, data, threshold=0.8):
+        if len(data) < 2:
+            return False
         num_expected_samples = (
             (data.index[-1] - data.index[0]).total_seconds() /
             self.sample_period)
@@ -163,11 +165,25 @@ class RealAggregateSource(ActivationsSource):
         return (hit_rate >= threshold)
 
     def _remove_activations_with_no_mains(self):
+        # First remove any activations where there is no mains data at all
         for fold, activations_for_appliance in self.activations.iteritems():
-            activations_for_building = activations_for_appliance[
+            activations_for_buildings = activations_for_appliance[
                 self.target_appliance]
-            for building, activations in activations_for_building.iteritems():
-                activations = copy(activations)
+            buildings_to_remove = []
+            for building in activations_for_buildings:
+                mains_for_fold = self.mains[fold]
+                if (building not in mains_for_fold and
+                        building not in buildings_to_remove):
+                    buildings_to_remove.append(building)
+            for building in buildings_to_remove:
+                self.activations[fold][self.target_appliance].pop(building)
+
+        # Now check for places where mains has insufficient samples,
+        # for example because the mains series has a break in it.
+        for fold, activations_for_appliance in self.activations.iteritems():
+            activations_for_buildings = activations_for_appliance[
+                self.target_appliance]
+            for building, activations in activations_for_buildings.iteritems():
                 mains = self.mains[fold][building]
                 activations_to_remove = []
                 for i, activation in enumerate(activations):
@@ -182,10 +198,12 @@ class RealAggregateSource(ActivationsSource):
                         activations_to_remove.append(i)
                 if activations_to_remove:
                     logger.info(
-                        "Removing {} activations from fold {} building {}"
+                        "Removing {} activations from fold '{}' building '{}'"
                         " because there was not enough mains data for"
-                        " these activations.".format(
-                            len(activations_to_remove), fold, building))
+                        " these activations. This leaves {} activations."
+                        .format(
+                            len(activations_to_remove), fold, building,
+                            len(activations) - len(activations_to_remove)))
                 activations_to_remove.reverse()
                 for i in activations_to_remove:
                     activations.pop(i)

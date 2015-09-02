@@ -79,7 +79,7 @@ class StrideSource(Source):
                 def load_data(meter):
                     return meter.power_series_all_data(
                         sample_period=self.sample_period,
-                        sections=good_sections).dropna()
+                        sections=good_sections).astype(np.float32).dropna()
 
                 mains_data = load_data(mains_meter)
                 appliance_data = load_data(appliance_meter)

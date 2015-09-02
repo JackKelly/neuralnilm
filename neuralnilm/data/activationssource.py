@@ -25,8 +25,19 @@ class ActivationsSource(Source):
         metadata attributes: building, appliance, fold.
     """
     def report(self):
-        report = super(ActivationSource, self).report()
-    
+        report = super(ActivationsSource, self).report()
+        report['num_activations'] = self.get_num_activations()
+        return report
+
+    def get_num_activations(self):
+        num_activations = {}
+        for fold, appliances in self.activations.iteritems():
+            for appliance, buildings in appliances.iteritems():
+                for building_name, activations in appliances.iteritems():
+                    num_activations.setdefault(fold, {}).setdefault(
+                        appliance, {})[building_name] = len(activations)
+        return num_activations
+
     def get_sequence(self, fold='train', enable_all_appliances=False):
         while True:
             yield self._get_sequence(
