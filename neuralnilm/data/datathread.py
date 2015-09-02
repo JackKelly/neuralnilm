@@ -4,7 +4,7 @@ from Queue import Queue, Empty
 
 
 class DataThread(Thread):
-    def __init__(self, data_pipeline, max_queue_size=3, **get_batch_kwargs):
+    def __init__(self, data_pipeline, max_queue_size=8, **get_batch_kwargs):
         super(DataThread, self).__init__(name='neuralnilm-data-process')
         self._stop = Event()
         self._queue = Queue(maxsize=max_queue_size)
