@@ -9,6 +9,7 @@ from nilmtk.timeframe import TimeFrame
 from neuralnilm.data.source import Sequence
 from neuralnilm.utils import check_windows
 from neuralnilm.data.activationssource import ActivationsSource
+from neuralnilm.consts import DATA_FOLD_NAMES
 
 import logging
 logger = logging.getLogger(__name__)
@@ -27,6 +28,11 @@ class RealAggregateSource(ActivationsSource):
         Same structure as `mains`.
     sections_with_no_target : dict
         Same structure as `mains`.
+    all_gaps : dict of pd.DataFrames
+        Each key is a fold name.
+        Each DF has columns:
+        building, gap, duration, p (short for 'probability')
+        p is used by _get_sequence_without_target().
     """
     def __init__(self, activations, target_appliance,
                  seq_length, filename, windows, sample_period,
@@ -59,6 +65,7 @@ class RealAggregateSource(ActivationsSource):
         self._load_mains_into_memory()
         self._remove_activations_with_no_mains()
         self._find_sections_with_no_target()
+        self._compute_gap_probabilities()
 
     def _load_mains_into_memory(self):
         logger.info("Loading NILMTK mains...")
@@ -130,16 +137,28 @@ class RealAggregateSource(ActivationsSource):
                 logger.info("Found {} sections without target for {} {}."
                             .format(len(intersection), fold, building))
 
+    def _compute_gap_probabilities(self):
+        # Choose a building and a gap
+        self.all_gaps = {}
+        for fold in DATA_FOLD_NAMES:
+            all_gaps_for_fold = []
+            for building, gaps in self.sections_with_no_target[fold].iteritems():
+                gaps_for_building = [
+                    (building, gap, gap.timedelta.total_seconds())
+                    for gap in gaps]
+                all_gaps_for_fold.extend(gaps_for_building)
+            gaps_df = pd.DataFrame(
+                all_gaps_for_fold, columns=['building', 'gap', 'duration'])
+            gaps_df['p'] = gaps_df['duration'] / gaps_df['duration'].sum()
+            self.all_gaps[fold] = gaps_df
+
     def _get_sequence_without_target(self, fold):
         # Choose a building and a gap
-        all_gaps = []
-        for building, gaps in self.sections_with_no_target[fold].iteritems():
-            all_gaps.extend([(building, gap) for gap in gaps])
-        lengths = np.array(
-            [gap.timedelta.total_seconds() for (_, gap) in all_gaps])
-        p = lengths / lengths.sum()
-        gap_i = self.rng.choice(len(all_gaps), p=p)
-        building, gap = all_gaps[gap_i]
+        all_gaps_for_fold = self.all_gaps[fold]
+        n = len(all_gaps_for_fold)
+        gap_i = self.rng.choice(n, p=all_gaps_for_fold['p'])
+        row = all_gaps_for_fold.iloc[gap_i]
+        building, gap = row['building'], row['gap']
 
         # Choose a start point in the gap
         latest_start_time = gap.end - timedelta(
