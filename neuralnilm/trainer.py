@@ -57,6 +57,8 @@ class Trainer(object):
             Run during `Trainer.validation()`
         """
         # Database
+        if mongo_host is None:
+            mongo_host = config.get("MongoDB", "address")
         mongo_client = MongoClient(mongo_host)
         self.db = mongo_client[mongo_db]
 
