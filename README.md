@@ -13,3 +13,7 @@ essentially be unsupported for the time being.
 # Configuration
 You need to create a `~/.neuralnilm` text file to specify some
 parameters.  Please see `example_config_file`.
+
+## MongoDB remote access
+
+See http://www.mkyong.com/mongodb/mongodb-allow-remote-access/
