@@ -65,3 +65,4 @@ target/
 # Data
 *.npysetup.csh
 setup.csh
+job_list.txt
