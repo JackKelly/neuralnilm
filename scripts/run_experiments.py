@@ -7,13 +7,13 @@ from neuralnilm.config import config
 import logging
 logger = logging.getLogger('neuralnilm')
 
-exp_path = config.get('Paths', 'experiment_definitions')
-job_list = join(exp_path, 'job_list.txt')
+experiment_definition_path = config.get('Paths', 'experiment_definitions')
+job_list_filename = join(experiment_definition_path, 'job_list.txt')
 
 
 def main():
-    if exp_path not in sys.path:
-        sys.path.insert(0, exp_path)
+    if experiment_definition_path not in sys.path:
+        sys.path.insert(0, experiment_definition_path)
 
     next_job = _get_next_job()
     while next_job:
@@ -34,7 +34,7 @@ def main():
 
 
 def _get_next_job():
-    with open(job_list, 'r') as fh:
+    with open(job_list_filename, 'r') as fh:
         next_job = fh.readline().strip()
     return next_job
 
@@ -46,9 +46,9 @@ def _run_job(next_job):
 
 
 def _delete_completed_job():
-    with open(job_list, 'r') as fh:
+    with open(job_list_filename, 'r') as fh:
         remaining_jobs = fh.readlines()[1:]
-    with open(job_list, 'w') as fh:
+    with open(job_list_filename, 'w') as fh:
         fh.writelines(remaining_jobs)
     logger.info("Remaining jobs = {}".format(remaining_jobs))
 

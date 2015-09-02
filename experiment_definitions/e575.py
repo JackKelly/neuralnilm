@@ -1,30 +1,45 @@
 from __future__ import print_function, division
 
+# Stop matplotlib from drawing to X.
+# Must be before importing matplotlib.pyplot or pylab!
+import matplotlib
+matplotlib.use('Agg')
+
 from lasagne.layers import InputLayer, DenseLayer, ReshapeLayer
 
 from neuralnilm.data.loadactivations import load_nilmtk_activations
 from neuralnilm.data.syntheticaggregatesource import SyntheticAggregateSource
+from neuralnilm.data.realaggregatesource import RealAggregateSource
+from neuralnilm.data.stridesource import StrideSource
 from neuralnilm.data.datapipeline import DataPipeline
-from neuralnilm.data.processing import DivideBy
+from neuralnilm.data.processing import DivideBy, IndependentlyCenter
 from neuralnilm.net import Net
 from neuralnilm.trainer import Trainer
 from neuralnilm.metrics import Metrics
+from neuralnilm.consts import DATA_FOLD_NAMES
 
 
 NILMTK_FILENAME = '/data/mine/vadeec/merged/ukdale.h5'
 SEQ_LENGTHS = {'kettle': 256}
 SAMPLE_PERIOD = 6
 STRIDE = None
-APPLIANCES = ['kettle', 'microwave', 'washing machine']
+APPLIANCES = [
+    'kettle', 'microwave', 'washing machine', 'dish washer', 'fridge']
 WINDOWS = {
     'train': {
-        1: ("2014-01-01", "2014-02-01")
+        1: ("2013-04-12", "2015-07-01"),
+        2: ("2013-05-22", "2013-10-03 06:16:00"),
+        3: ("2013-02-27", "2013-04-01 06:15:05"),
+        4: ("2013-03-09", "2013-09-24 06:15:14")
     },
     'unseen_activations_of_seen_appliances': {
-        1: ("2014-02-02", "2014-02-08")
+        1: ("2015-07-02", None),
+        2: ("2013-10-03 06:16:00", None),
+        3: ("2013-04-01 06:15:05", None),
+        4: ("2013-09-24 06:15:14", None)
     },
     'unseen_appliances': {
-        2: ("2013-06-01", "2013-06-07")
+        5: ("2014-06-29", None)
     }
 }
 
@@ -39,10 +54,12 @@ LOADER_CONFIG = {
 
 
 def run(root_experiment_name):
-    activations = get_activations()
+    activations = load_nilmtk_activations(
+        **LOADER_CONFIG['nilmtk_activations'])
+
     for get_net in [ae]:
         for target_appliance in ['kettle']:
-            pipeline = get_pipeline(activations, target_appliance)
+            pipeline = get_pipeline(target_appliance, activations)
 
             # Build net
             batch = pipeline.get_batch()
@@ -57,7 +74,9 @@ def run(root_experiment_name):
                 metrics=Metrics(state_boundaries=[4]),
                 learning_rates={0: 1E-2},
                 repeat_callbacks=[
-                    (100, Trainer.validate)
+                    (500, Trainer.validate)
+                    (5000, Trainer.save_params),
+                    (5000, Trainer.plot_estimates)
                 ]
             )
 
@@ -65,35 +84,30 @@ def run(root_experiment_name):
             trainer.submit_report(additional_report_contents=contents)
 
             # Run!
-            trainer.fit(1000)
+            trainer.fit(None)
 
 
-# -------------  NETWORKS  ---------------
+# ----------------------  NETWORKS  -------------------------
 def ae(batch):
-    input_shape = batch.after_processing.input.shape
-    target_shape = batch.after_processing.target.shape
+    input_shape = batch.input.shape
+    target_shape = batch.target.shape
 
     input_layer = InputLayer(
         shape=input_shape
     )
 
     # Dense layers
-    NUM_UNITS = {
-        'dense_layer_0': 100,
-        'dense_layer_1':  50,
-        'dense_layer_2': 100
-    }
     dense_layer_0 = DenseLayer(
         input_layer,
-        num_units=NUM_UNITS['dense_layer_0']
+        num_units=128
     )
     dense_layer_1 = DenseLayer(
         dense_layer_0,
-        num_units=NUM_UNITS['dense_layer_1']
+        num_units=64
     )
     dense_layer_2 = DenseLayer(
         dense_layer_1,
-        num_units=NUM_UNITS['dense_layer_2']
+        num_units=128
     )
 
     # Output
@@ -107,33 +121,94 @@ def ae(batch):
         shape=target_shape
     )
 
-    net = Net(output_layer, tags=['AE'],
-              description="Just testing new NeuralNILM code!")
+    net = Net(
+        output_layer,
+        tags=['AE'],
+        description="Like AE in e567 but without conv layer",
+        predecessor_experiment="e567"
+    )
     return net
 
 
-def get_activations():
-    nilmtk_activations = load_nilmtk_activations(
-        **LOADER_CONFIG['nilmtk_activations'])
-    return nilmtk_activations
+# ------------------------ DATA ----------------------
 
+def get_pipeline(target_appliance, activations):
 
-def get_pipeline(activations, target_appliance):
-    source = SyntheticAggregateSource(
-        activations=activations,
+    if target_appliance == 'kettle':
+        seq_length = 128
+        train_buildings = [1, 2, 4]
+        unseen_buildings = [5]
+        num_seq_per_batch = 64
+
+    filtered_windows = select_windows(train_buildings, unseen_buildings)
+    filtered_activations = filter_activations(filtered_windows, activations)
+
+    synthetic_agg_source = SyntheticAggregateSource(
+        activations=filtered_activations,
         target_appliance=target_appliance,
-        seq_length=SEQ_LENGTHS[target_appliance],
-        allow_incomplete_target=False
+        seq_length=seq_length,
+        sample_period=SAMPLE_PERIOD
     )
 
-    sample = source.get_batch(num_seq_per_batch=1024)
-    input_std = sample.before_processing.input.flatten().std()
-    target_std = sample.before_processing.target.flatten().std()
+    real_agg_source = RealAggregateSource(
+        activations=filtered_activations,
+        target_appliance=target_appliance,
+        seq_length=seq_length,
+        filename=NILMTK_FILENAME,
+        windows=filtered_windows,
+        sample_period=SAMPLE_PERIOD
+    )
+
+    stride_source = StrideSource(
+        target_appliance=target_appliance,
+        seq_length=seq_length,
+        filename=NILMTK_FILENAME,
+        windows=filtered_windows,
+        sample_period=SAMPLE_PERIOD,
+        stride=STRIDE
+    )
+
+    sample = real_agg_source.get_batch(num_seq_per_batch=1024).next()
+    sample = sample.before_processing
+    input_std = sample.input.flatten().std()
+    target_std = sample.target.flatten().std()
     pipeline = DataPipeline(
-        [source],
-        num_seq_per_batch=64,
-        input_processing=[DivideBy(input_std)],
+        [synthetic_agg_source, real_agg_source, stride_source],
+        num_seq_per_batch=num_seq_per_batch,
+        input_processing=[DivideBy(input_std), IndependentlyCenter()],
         target_processing=[DivideBy(target_std)]
     )
 
     return pipeline
+
+
+def select_windows(train_buildings, unseen_buildings):
+    windows = {fold: {} for fold in DATA_FOLD_NAMES}
+
+    def copy_window(fold, i):
+        windows[fold][i] = WINDOWS[fold][i]
+
+    for i in train_buildings:
+        copy_window('train', i)
+        copy_window('unseen_activations_of_seen_appliances', i)
+    for i in unseen_buildings:
+        copy_window('unseen_appliances', i)
+    return windows
+
+
+def filter_activations(windows, activations):
+    new_activations = {
+        fold: {appliance: {} for appliance in APPLIANCES}
+        for fold in DATA_FOLD_NAMES}
+    for fold, appliances in activations.iteritems():
+        for appliance, buildings in appliances.iteritems():
+            required_building_ids = windows[fold].keys()
+            required_building_names = [
+                'UK-DALE_building_{}'.format(i) for i in required_building_ids]
+            for building_name in required_building_names:
+                try:
+                    new_activations[fold][appliance][building_name] = (
+                        activations[fold][appliance][building_name])
+                except KeyError:
+                    pass
+    return activations

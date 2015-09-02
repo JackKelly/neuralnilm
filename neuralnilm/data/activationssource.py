@@ -24,6 +24,9 @@ class ActivationsSource(Source):
         Each activation is a pd.Series with DatetimeIndex and the following
         metadata attributes: building, appliance, fold.
     """
+    def report(self):
+        report = super(ActivationSource, self).report()
+    
     def get_sequence(self, fold='train', enable_all_appliances=False):
         while True:
             yield self._get_sequence(
