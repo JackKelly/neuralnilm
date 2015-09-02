@@ -19,8 +19,7 @@ from neuralnilm.metrics import Metrics
 from neuralnilm.consts import DATA_FOLD_NAMES
 
 
-NILMTK_FILENAME = '/data/mine/vadeec/merged/ukdale.h5'
-SEQ_LENGTHS = {'kettle': 256}
+NILMTK_FILENAME = '/data/dk3810/ukdale.h5'
 SAMPLE_PERIOD = 6
 STRIDE = None
 APPLIANCES = [
