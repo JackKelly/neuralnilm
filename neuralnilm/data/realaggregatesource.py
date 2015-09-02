@@ -145,7 +145,10 @@ class RealAggregateSource(ActivationsSource):
         latest_start_time = gap.end - timedelta(
             seconds=self.seq_length * self.sample_period)
         max_offset_seconds = (latest_start_time - gap.start).total_seconds()
-        offset = self.rng.randint(max_offset_seconds)
+        if max_offset_seconds <= 0:
+            offset = 0
+        else:
+            offset = self.rng.randint(max_offset_seconds)
         start_time = gap.start + timedelta(seconds=offset)
         end_time = start_time + timedelta(
             seconds=(self.seq_length + 1) * self.sample_period)
