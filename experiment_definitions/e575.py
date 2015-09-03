@@ -68,7 +68,7 @@ def run(root_experiment_name):
                 metrics=Metrics(state_boundaries=[3]),
                 learning_rates={0: 1E-2},
                 repeat_callbacks=[
-                    (500, Trainer.validate),
+                    (5000, Trainer.validate),
                     (5000, Trainer.save_params),
                     (5000, Trainer.plot_estimates)
                 ]
