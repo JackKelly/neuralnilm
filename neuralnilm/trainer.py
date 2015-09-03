@@ -107,7 +107,8 @@ class Trainer(object):
                         break
 
         # Output path
-        path_list = [config.get('Paths', 'output')] + experiment_id
+        path_list = [config.get('Paths', 'output')]
+        path_list += self.experiment_id.split('_')
         self.output_path = os.path.join(*path_list)
         try:
             os.makedirs(self.output_path)
