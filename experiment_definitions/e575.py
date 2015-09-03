@@ -65,7 +65,7 @@ def run(root_experiment_name):
                 data_pipeline=pipeline,
                 experiment_id=[
                     root_experiment_name, get_net.__name__, target_appliance],
-                metrics=Metrics(state_boundaries=[3]),
+                metrics=Metrics(state_boundaries=[2]),  # was 3 up until 230000ish
                 learning_rates={0: 1E-2},
                 repeat_callbacks=[
                     (5000, Trainer.validate),
