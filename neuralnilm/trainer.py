@@ -79,17 +79,32 @@ class Trainer(object):
         if self.db.experiments.find_one({'_id': self.experiment_id}):
             delete_or_quit = raw_input(
                 "Database already has an experiment with _id == {}."
-                " Should the old experiment be deleted"
-                " (both from the database and from disk)?"
-                " Or quit? [Q/d] ".format(self.experiment_id)).lower()
+                " Should the old experiment be deleted (d)"
+                " (both from the database and from disk)? Or quit (q)?"
+                " Or append (a) '_try<i>` string to _id? [A/q/d] "
+                .format(self.experiment_id)).lower()
             if delete_or_quit == 'd':
                 logger.info("Deleting documents for old experiment.")
                 self.db.experiments.delete_one({'_id': self.experiment_id})
                 for collection in COLLECTIONS:
                     self.db[collection].delete_many(
                         {'experiment_id': self.experiment_id})
-            else:
+            elif delete_or_quit == 'q':
                 raise KeyboardInterrupt()
+            else:
+                self.modification_since_last_try = raw_input(
+                    "Enter a short description of what has changed since"
+                    " the last try: ")
+                try_i = 2
+                while True:
+                    candidate_id = self.experiment_id + '_try' + str(try_i)
+                    if self.db.experiments.find_one({'_id': candidate_id}):
+                        try_i += 1
+                    else:
+                        self.experiment_id = candidate_id
+                        logger.info("experiment_id set to {}"
+                                    .format(self.experiment_id))
+                        break
 
         # Output path
         path_list = [config.get('Paths', 'output')] + experiment_id
@@ -289,10 +304,15 @@ class Trainer(object):
         repeat_callbacks = self.repeat_callbacks[
             (self.net.train_iterations %
              self.repeat_callbacks['iteration']) == 0]
-        self._run_callbacks(repeat_callbacks)
         callbacks = self.callbacks[
             self.callbacks['iteration'] == self.net.train_iterations]
-        self._run_callbacks(callbacks)
+        if (len(repeat_callbacks) + len(callbacks)) > 0:
+            # Stop data thread otherwise we get intermittent issues with
+            # the batch generator complaining that it's already running.
+            self.data_thread.stop()
+            self._run_callbacks(repeat_callbacks)
+            self._run_callbacks(callbacks)
+            self._start_data_thread()
         time5 = time()
 
         print(
@@ -304,9 +324,6 @@ class Trainer(object):
             callback(self)
 
     def validate(self):
-        # Stop data thread otherwise we get intermittent issues with
-        # the batch generator complaining that it's already running.
-        self.data_thread.stop()
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
         for source_id, source in enumerate(sources):
@@ -341,7 +358,6 @@ class Trainer(object):
                     'fold': fold,
                     'scores': two_level_series_to_dict(scores)
                 })
-        self._start_data_thread()
 
     def _get_train_func(self):
         if self._train_func is None:
