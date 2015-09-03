@@ -174,7 +174,6 @@ class RealAggregateSource(ActivationsSource):
         mains = self.mains[fold][building][start_time:end_time]
         seq = Sequence(self.seq_length)
         seq.input = mains.values[:self.seq_length]
-        assert len(seq.input) == self.seq_length
         return seq
 
     def _has_sufficient_samples(self, data, start, end, threshold=0.8):
@@ -238,9 +237,23 @@ class RealAggregateSource(ActivationsSource):
                              " for RealAggregateSource!")
 
         if self.rng.binomial(n=1, p=self.target_inclusion_prob):
-            seq = self._get_sequence_which_includes_target(fold=fold)
+            _seq_getter_func = self._get_sequence_which_includes_target
         else:
-            seq = self._get_sequence_without_target(fold=fold)
+            _seq_getter_func = self._get_sequence_without_target
+
+        MAX_RETRIES = 50
+        for retry_i in range(MAX_RETRIES):
+            seq = _seq_getter_func(fold=fold)
+            if seq is None:
+                continue
+            if len(seq.input) != self.seq_length:
+                continue
+            if len(seq.target) != self.seq_length:
+                continue
+            break
+        else:
+            raise RuntimeError("No valid sequences found after {} retries!"
+                               .format(MAX_RETRIES))
 
         seq.input = seq.input[:, np.newaxis]
         seq.target = seq.target[:, np.newaxis]
@@ -249,70 +262,64 @@ class RealAggregateSource(ActivationsSource):
         return seq
 
     def _get_sequence_which_includes_target(self, fold):
-        MAX_RETRIES = 50
-        for retry_i in range(MAX_RETRIES):
-            seq = Sequence(self.seq_length)
-            building_name = self._select_building(fold, self.target_appliance)
-            activations = (
-                self.activations[fold][self.target_appliance][building_name])
-            activation_i = self._select_activation(activations)
-            activation = activations[activation_i]
-            positioned_activation, is_complete = (
-                self._position_activation(
-                    activation, is_target_appliance=True))
-            if is_complete or self.include_incomplete_target_in_output:
-                seq.target = positioned_activation
-            else:
-                seq.target = pd.Series(0, index=positioned_activation.index)
+        seq = Sequence(self.seq_length)
+        building_name = self._select_building(fold, self.target_appliance)
+        activations = (
+            self.activations[fold][self.target_appliance][building_name])
+        activation_i = self._select_activation(activations)
+        activation = activations[activation_i]
+        positioned_activation, is_complete = (
+            self._position_activation(
+                activation, is_target_appliance=True))
+        if is_complete or self.include_incomplete_target_in_output:
+            seq.target = positioned_activation
+        else:
+            seq.target = pd.Series(0, index=positioned_activation.index)
 
-            # Check neighbouring activations
-            mains_start = positioned_activation.index[0]
-            mains_end = positioned_activation.index[-1]
+        # Check neighbouring activations
+        mains_start = positioned_activation.index[0]
+        mains_end = positioned_activation.index[-1]
 
-            def neighbours_ok(neighbour_indicies):
-                for i in neighbour_indicies:
-                    activation = activations[i]
-                    activation_duration = (
-                        activation.index[-1] - activation.index[0])
-                    neighbouring_activation_is_inside_mains_window = (
-                        activation.index[0] >
-                        (mains_start - activation_duration)
-                        and activation.index[0] < mains_end)
+        def neighbours_ok(neighbour_indicies):
+            for i in neighbour_indicies:
+                activation = activations[i]
+                activation_duration = (
+                    activation.index[-1] - activation.index[0])
+                neighbouring_activation_is_inside_mains_window = (
+                    activation.index[0] >
+                    (mains_start - activation_duration)
+                    and activation.index[0] < mains_end)
 
-                    if neighbouring_activation_is_inside_mains_window:
-                        if self.allow_multiple_target_activations_in_aggregate:
-                            if self.include_multiple_targets_in_output:
-                                sum_target = seq.target.add(
-                                    activation, fill_value=0)
-                                is_complete = (
-                                    sum_target.index == seq.target.index)
-                                if self.allow_incomplete_target or is_complete:
-                                    seq.target = sum_target[seq.target.index]
-                        else:
-                            return False  # need to retry
+                if neighbouring_activation_is_inside_mains_window:
+                    if self.allow_multiple_target_activations_in_aggregate:
+                        if self.include_multiple_targets_in_output:
+                            sum_target = seq.target.add(
+                                activation, fill_value=0)
+                            is_complete = (
+                                sum_target.index == seq.target.index)
+                            if self.allow_incomplete_target or is_complete:
+                                seq.target = sum_target[seq.target.index]
                     else:
-                        return True  # everything checks out OK so far
-                return True
+                        return False  # need to retry
+                else:
+                    return True  # everything checks out OK so far
+            return True
 
-            # Check forwards
-            if not neighbours_ok(range(activation_i+1, len(activations))):
-                continue
-            # Check backwards
-            if not neighbours_ok(range(activation_i-1, -1, -1)):
-                continue
+        # Check forwards
+        if not neighbours_ok(range(activation_i+1, len(activations))):
+            return
+        # Check backwards
+        if not neighbours_ok(range(activation_i-1, -1, -1)):
+            return
 
-            # Get mains
-            mains_for_building = self.mains[fold][activation.building]
-            # load some additional data to make sure we have enough samples
-            mains_end_extended = mains_end + timedelta(
-                seconds=self.sample_period * 2)
-            mains = mains_for_building[mains_start:mains_end_extended]
-            seq.input = mains.values[:self.seq_length]
-            if len(seq.input) != self.seq_length:
-                continue
-            return seq
-        raise RuntimeError("No valid sequences found after {} retries!"
-                           .format(MAX_RETRIES))
+        # Get mains
+        mains_for_building = self.mains[fold][activation.building]
+        # load some additional data to make sure we have enough samples
+        mains_end_extended = mains_end + timedelta(
+            seconds=self.sample_period * 2)
+        mains = mains_for_building[mains_start:mains_end_extended]
+        seq.input = mains.values[:self.seq_length]
+        return seq
 
     @classmethod
     def _attrs_to_remove_for_report(cls):
