@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-VALID_TAGS = ['AE', 'RNN', '1DConv', 'tied weights']
+VALID_TAGS = ['AE', 'RNN', 'Conv1D', 'tied weights', 'rectangles']
 
 
 class Net(object):
