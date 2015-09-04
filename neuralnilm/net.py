@@ -3,6 +3,7 @@ from copy import copy
 import theano
 import h5py
 from lasagne.layers.helper import get_all_layers, get_output, get_all_params
+from lasagne.layers import InputLayer
 from neuralnilm.utils import none_to_list
 
 import logging
@@ -163,3 +164,13 @@ class Net(object):
         report.setdefault('architecture', {})[0] = (
             self.description_of_architecture())
         return {'net': report}
+
+
+def build_net(input_shape, layers):
+    # Input layer
+    layer = InputLayer(shape=input_shape)
+    for layer_config in layers:
+        layer_type = layer_config.pop('type')
+        layer = layer_type(layer, **layer_config)
+
+    return layer

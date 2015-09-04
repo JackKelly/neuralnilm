@@ -6,7 +6,8 @@ import matplotlib
 matplotlib.use('Agg')
 
 from lasagne.layers import (InputLayer, DenseLayer, ReshapeLayer,
-                            DimshuffleLayer, Conv1DLayer, ReshapeLayer)
+                            DimshuffleLayer, Conv1DLayer)
+from lasagne.nonlinearities import rectify
 
 from neuralnilm.data.loadactivations import load_nilmtk_activations
 from neuralnilm.data.syntheticaggregatesource import SyntheticAggregateSource
@@ -14,7 +15,7 @@ from neuralnilm.data.realaggregatesource import RealAggregateSource
 from neuralnilm.data.stridesource import StrideSource
 from neuralnilm.data.datapipeline import DataPipeline
 from neuralnilm.data.processing import DivideBy, IndependentlyCenter
-from neuralnilm.net import Net
+from neuralnilm.net import Net, build_net
 from neuralnilm.trainer import Trainer
 from neuralnilm.metrics import Metrics
 from neuralnilm.consts import DATA_FOLD_NAMES
@@ -67,11 +68,15 @@ def run(root_experiment_name):
                 experiment_id=[
                     root_experiment_name, get_net.__name__, target_appliance],
                 metrics=Metrics(state_boundaries=[2.5]),
-                learning_rates={0: 1E-2},
+                learning_rates={
+                    0: 1e-1,
+                    50000: 1e-2,
+                    200000: 1e-3
+                },
                 repeat_callbacks=[
-                    (5000, Trainer.validate),
-                    (5000, Trainer.save_params),
-                    (5000, Trainer.plot_estimates)
+                    (25000, Trainer.validate),
+                    (25000, Trainer.save_params),
+                    (25000, Trainer.plot_estimates)
                 ]
             )
 
@@ -79,7 +84,7 @@ def run(root_experiment_name):
             print(report)
 
             # Run!
-            trainer.fit(None)
+            trainer.fit(300000)
 
 
 # ----------------------  NETWORKS  -------------------------
@@ -87,64 +92,61 @@ def ae(batch):
     NUM_FILTERS = 8
     input_shape = batch.input.shape
     seq_length = input_shape[1]
-
-    # Input layer
-    input_layer = InputLayer(
-        shape=input_shape
-    )
-
-    # Conv layer
-    dimshuffle_layer_0 = DimshuffleLayer(
-        input_layer,
-        pattern=(0, 2, 1)  # To (batch, features, time)
-    )
-    conv_layer_0 = Conv1DLayer(
-        dimshuffle_layer_0,
-        num_filters=NUM_FILTERS,
-        filter_size=4,
-        stride=1,
-        nonlinearity=None,
-        border_mode='valid'
-    )
-    dimshuffle_layer_1 = DimshuffleLayer(
-        conv_layer_0,
-        pattern=(0, 2, 1)  # Back to (batch, time, features)
-    )
-
-    # Dense layers
-    dense_layer_0 = DenseLayer(
-        dimshuffle_layer_1,
-        num_units=(seq_length - 3) * NUM_FILTERS
-    )
-    dense_layer_1 = DenseLayer(
-        dense_layer_0,
-        num_units=128
-    )
-    dense_layer_2 = DenseLayer(
-        dense_layer_1,
-        num_units=(seq_length - 3) * NUM_FILTERS
-    )
-
-    # De-conv
-    reshape_layer_0 = ReshapeLayer(
-        dense_layer_2,
-        shape=(-1, (seq_length - 3), NUM_FILTERS)
-    )
-    dimshuffle_layer_2 = DimshuffleLayer(
-        reshape_layer_0,
-        pattern=(0, 2, 1)  # To (batch, features, time)
-    )
-    conv_layer_1 = Conv1DLayer(
-        dimshuffle_layer_2,
-        num_filters=1,
-        filter_size=4,
-        stride=1,
-        nonlinearity=None,
-        border_mode='full'
-    )
-    output_layer = DimshuffleLayer(
-        conv_layer_1,
-        pattern=(0, 2, 1)  # Back to (batch, time, features)
+    output_layer = build_net(
+        input_shape=input_shape,
+        layers=[
+            {
+                'type': DimshuffleLayer,
+                'pattern': (0, 2, 1)  # (batch, features, time)
+            },
+            {
+                'type': Conv1DLayer,  # convolve over the time axis
+                'num_filters': NUM_FILTERS,
+                'filter_size': 4,
+                'stride': 1,
+                'nonlinearity': None,
+                'border_mode': 'valid'
+            },
+            {
+                'type': DimshuffleLayer,
+                'pattern': (0, 2, 1)  # back to (batch, time, features)
+            },
+            {
+                'type': DenseLayer,
+                'num_units': (seq_length - 3) * NUM_FILTERS,
+                'nonlinearity': rectify
+            },
+            {
+                'type': DenseLayer,
+                'num_units': 128,
+                'nonlinearity': rectify
+            },
+            {
+                'type': DenseLayer,
+                'num_units': (seq_length - 3) * NUM_FILTERS,
+                'nonlinearity': rectify
+            },
+            {
+                'type': ReshapeLayer,
+                'shape': (-1, (seq_length - 3), NUM_FILTERS)
+            },
+            {
+                'type': DimshuffleLayer,
+                'pattern': (0, 2, 1)  # (batch, features, time)
+            },
+            {   # DeConv
+                'type': Conv1DLayer,
+                'num_filters': 1,
+                'filter_size': 4,
+                'stride': 1,
+                'nonlinearity': None,
+                'border_mode': 'full'
+            },
+            {
+                'type': DimshuffleLayer,
+                'pattern': (0, 2, 1)  # back to (batch, time, features)
+            }
+        ]
     )
 
     net = Net(
