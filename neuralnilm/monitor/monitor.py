@@ -13,7 +13,8 @@ from neuralnilm.config import config
 class Monitor(object):
     def __init__(self, experiment_id, output_path='.',
                  update_period=1, max_num_lines=1000,
-                 mongo_db='neuralnilm'):
+                 mongo_db='neuralnilm',
+                 mongo_host=None):
         """
         Parameters
         ----------
@@ -25,7 +26,10 @@ class Monitor(object):
         self.update_period = update_period
         self.max_num_lines = max_num_lines
         self._last_iteration_processed = {'train': 0, 'validation': 0}
-        self.mongo_host = config.get("MongoDB", "address")
+        if mongo_host is None:
+            self.mongo_host = config.get("MongoDB", "address")
+        else:
+            self.mongo_host = mongo_host
         self.mongo_client = pymongo.MongoClient(self.mongo_host)
         self.db = self.mongo_client[mongo_db]
         self.mongo_db = mongo_db
