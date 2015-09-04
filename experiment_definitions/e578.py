@@ -69,8 +69,7 @@ def run(root_experiment_name):
                     root_experiment_name, get_net.__name__, target_appliance],
                 metrics=Metrics(state_boundaries=[2.5]),
                 learning_rates={
-                    0: 1e-1,
-                    50000: 1e-2,
+                    0: 1e-2,
                     200000: 1e-3
                 },
                 repeat_callbacks=[
