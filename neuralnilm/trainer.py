@@ -325,6 +325,8 @@ class Trainer(object):
             callback(self)
 
     def validate(self):
+        logger.info("Iteration {}: Running validation..."
+                    .format(self.net.train_iterations))
         sources = self.data_thread.data_pipeline.sources
         output_func = self.net.deterministic_output_func
         for source_id, source in enumerate(sources):
@@ -359,6 +361,7 @@ class Trainer(object):
                     'fold': fold,
                     'scores': two_level_series_to_dict(scores)
                 })
+        logger.info("  Finished validation.".format(self.net.train_iterations))
 
     def _get_train_func(self):
         if self._train_func is None:
