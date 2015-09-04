@@ -105,7 +105,7 @@ def ae(batch):
                 'filter_size': 4,
                 'stride': 1,
                 'nonlinearity': None,
-                'border_mode': 'valid'
+                'pad': 'valid'
             },
             {
                 'type': DimshuffleLayer,
@@ -140,7 +140,7 @@ def ae(batch):
                 'filter_size': 4,
                 'stride': 1,
                 'nonlinearity': None,
-                'border_mode': 'full'
+                'pad': 'full'
             },
             {
                 'type': DimshuffleLayer,
