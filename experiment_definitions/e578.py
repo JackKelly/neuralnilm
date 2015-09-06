@@ -31,15 +31,18 @@ WINDOWS = {
         1: ("2013-04-12", "2015-07-01"),
         2: ("2013-05-22", "2013-10-03 06:16:00"),
         3: ("2013-02-27", "2013-04-01 06:15:05"),
-        4: ("2013-03-09", "2013-09-24 06:15:14")
+        4: ("2013-03-09", "2013-09-24 06:15:14"),
+        5: ("2014-06-29", "2014-09-01")
     },
     'unseen_activations_of_seen_appliances': {
         1: ("2015-07-02", None),
         2: ("2013-10-03 06:16:00", None),
         3: ("2013-04-01 06:15:05", None),
-        4: ("2013-09-24 06:15:14", None)
+        4: ("2013-09-24 06:15:14", None),
+        5: ("2014-09-01", None)
     },
     'unseen_appliances': {
+        2: ("2013-05-22", None),
         5: ("2014-06-29", None)
     }
 }
@@ -54,7 +57,9 @@ def run(root_experiment_name):
     )
 
     for get_net in [ae]:
-        for target_appliance in APPLIANCES:
+        for target_appliance in APPLIANCES[2:]:
+            print("Starting training for net {}, appliance {}."
+                  .format(get_net.__name__, target_appliance))
             pipeline = get_pipeline(target_appliance, activations)
 
             # Build net
