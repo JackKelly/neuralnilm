@@ -18,7 +18,7 @@ from neuralnilm.data.processing import DivideBy, IndependentlyCenter
 from neuralnilm.net import Net, build_net
 from neuralnilm.trainer import Trainer
 from neuralnilm.metrics import Metrics
-from neuralnilm.consts import DATA_FOLD_NAMES
+from neuralnilm.utils import select_windows, filter_activations
 
 
 NILMTK_FILENAME = '/data/dk3810/ukdale.h5'
@@ -164,8 +164,10 @@ def get_pipeline(target_appliance, activations):
         train_buildings = [1, 2]
         unseen_buildings = [5]
 
-    filtered_windows = select_windows(train_buildings, unseen_buildings)
-    filtered_activations = filter_activations(filtered_windows, activations)
+    filtered_windows = select_windows(
+        train_buildings, unseen_buildings, WINDOWS)
+    filtered_activations = filter_activations(
+        filtered_windows, activations, APPLIANCES)
 
     synthetic_agg_source = SyntheticAggregateSource(
         activations=filtered_activations,
@@ -204,35 +206,3 @@ def get_pipeline(target_appliance, activations):
     )
 
     return pipeline
-
-
-def select_windows(train_buildings, unseen_buildings):
-    windows = {fold: {} for fold in DATA_FOLD_NAMES}
-
-    def copy_window(fold, i):
-        windows[fold][i] = WINDOWS[fold][i]
-
-    for i in train_buildings:
-        copy_window('train', i)
-        copy_window('unseen_activations_of_seen_appliances', i)
-    for i in unseen_buildings:
-        copy_window('unseen_appliances', i)
-    return windows
-
-
-def filter_activations(windows, activations):
-    new_activations = {
-        fold: {appliance: {} for appliance in APPLIANCES}
-        for fold in DATA_FOLD_NAMES}
-    for fold, appliances in activations.iteritems():
-        for appliance, buildings in appliances.iteritems():
-            required_building_ids = windows[fold].keys()
-            required_building_names = [
-                'UK-DALE_building_{}'.format(i) for i in required_building_ids]
-            for building_name in required_building_names:
-                try:
-                    new_activations[fold][appliance][building_name] = (
-                        activations[fold][appliance][building_name])
-                except KeyError:
-                    pass
-    return activations

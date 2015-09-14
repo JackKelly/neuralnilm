@@ -141,3 +141,35 @@ def get_colors(n, cmap_name='jet'):
     cmap = plt.get_cmap(cmap_name)
     colors = [cmap(i) for i in np.linspace(0, 1, n)]
     return colors
+
+
+def select_windows(train_buildings, unseen_buildings, original_windows):
+    windows = {fold: {} for fold in DATA_FOLD_NAMES}
+
+    def copy_window(fold, i):
+        windows[fold][i] = original_windows[fold][i]
+
+    for i in train_buildings:
+        copy_window('train', i)
+        copy_window('unseen_activations_of_seen_appliances', i)
+    for i in unseen_buildings:
+        copy_window('unseen_appliances', i)
+    return windows
+
+
+def filter_activations(windows, activations, appliances):
+    new_activations = {
+        fold: {appliance: {} for appliance in appliances}
+        for fold in DATA_FOLD_NAMES}
+    for fold, appliances in activations.iteritems():
+        for appliance, buildings in appliances.iteritems():
+            required_building_ids = windows[fold].keys()
+            required_building_names = [
+                'UK-DALE_building_{}'.format(i) for i in required_building_ids]
+            for building_name in required_building_names:
+                try:
+                    new_activations[fold][appliance][building_name] = (
+                        activations[fold][appliance][building_name])
+                except KeyError:
+                    pass
+    return activations
