@@ -48,11 +48,17 @@ class DataPipeline(object):
             self._source_iterators[source_id] = None
             return None
         else:
-            batch.after_processing.input = self.apply_processing(
+            batch.after_processing.input, i_metadata = self.apply_processing(
                 batch.before_processing.input, 'input')
-            batch.after_processing.target = self.apply_processing(
+            batch.after_processing.target, t_metadata = self.apply_processing(
                 batch.before_processing.target, 'target')
-            batch.metadata['source_id'] = source_id
+            batch.metadata.update({
+                'source_id': source_id,
+                'processing': {
+                    'input': i_metadata,
+                    'target': t_metadata
+                }
+            })
             return batch
 
     def apply_processing(self, data, net_input_or_target):
@@ -66,13 +72,18 @@ class DataPipeline(object):
 
         Returns
         -------
+        processed_data, metadata
         processed_data : np.ndarray
             shape = (num_seq_per_batch, seq_length, num_features)
+        metadata : dict
         """
         processing_steps = self._get_processing_steps(net_input_or_target)
+        metadata = {}
         for step in processing_steps:
             data = step(data)
-        return data
+            if hasattr(step, 'metadata'):
+                metadata.update(step.metadata)
+        return data, metadata
 
     def apply_inverse_processing(self, data, net_input_or_target):
         """Applies the inverse of `<input, target>_processing` to `data`.

@@ -28,4 +28,6 @@ class DivideBy(Processor):
 
 class IndependentlyCenter(Processor):
     def __call__(self, data):
-        return data - data.mean(axis=1, keepdims=True)
+        means = data.mean(axis=1, keepdims=True)
+        self.metadata = {'IndependentlyCentre': {'means': means}}
+        return data - means

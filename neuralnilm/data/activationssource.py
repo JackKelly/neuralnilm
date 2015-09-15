@@ -24,6 +24,12 @@ class ActivationsSource(Source):
         Each activation is a pd.Series with DatetimeIndex and the following
         metadata attributes: building, appliance, fold.
     """
+
+    def __init__(self, **kwargs):
+        if not self.allow_incomplete_target:
+            self._remove_over_long_activations(self.target_appliance)
+        super(ActivationsSource, self).__init__(**kwargs)
+
     def report(self):
         report = super(ActivationsSource, self).report()
         report['num_activations'] = self.get_num_activations()
@@ -47,6 +53,21 @@ class ActivationsSource(Source):
         all_appliances = set(self.activations[fold].keys())
         distractor_appliances = all_appliances - set([self.target_appliance])
         return list(distractor_appliances)
+
+    def _remove_over_long_activations(self, appliance_to_filter):
+        new_activations = {}
+        for fold, appliances in self.activations.iteritems():
+            new_activations[fold] = {}
+            for appliance, buildings in appliances.iteritems():
+                new_activations[fold][appliance] = {}
+                if appliance == appliance_to_filter:
+                    for building, activations in buildings.iteritems():
+                        new_activations[fold][appliance][building] = [
+                            activation for activation in activations
+                            if len(activation) < self.seq_length]
+                else:
+                    new_activations[fold][appliance] = buildings
+        self.activations = new_activations
 
     def _select_building(self, fold, appliance):
         """
