@@ -5,11 +5,14 @@ This is a complete re-write of the
 [Neural NILM Prototype](https://github.com/JackKelly/neuralnilm_prototype).
 
 # Getting started
-This is 'research' software and will be undergoing a lot of changes
-over the coming weeks and months!  Be warned!  Also, my efforts will
-be focused on writing code, so I probably won't have time to look at
-the issue queue any time soon so please consider this software to
-essentially be unsupported for the time being.
+[Here is a short iPython notebook to show how to load activations from UKDALE](https://github.com/JackKelly/neuralnilm/blob/master/notebooks/extract_activations.ipynb).
+
+Please also note that my neuralnilm code is only provided as a proof
+of concept and as a reference.  It isn't yet in a state where it's
+easy for other people to run the code.  Unfortunately I won't have
+time to work on the Neural NILM code at least until early 2016 (I am
+currently writing up my PhD thesis and must focus all my effort on the
+writing).
 
 That said, if you're really determined to read and understand this
 code then here's a quite description of the basic architecture:
