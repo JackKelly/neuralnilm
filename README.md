@@ -10,9 +10,10 @@ This is a complete re-write of the
 Please also note that my neuralnilm code is only provided as a proof
 of concept and as a reference.  It isn't yet in a state where it's
 easy for other people to run the code.  Unfortunately I won't have
-time to work on the Neural NILM code at least until early 2016 (I am
-currently writing up my PhD thesis and must focus all my effort on the
-writing).
+time to work on the Neural NILM code or to provide support anytime 
+in the forseable future.  So the code is provided 'as is' without 
+any support at the moment.  Maybe one day I'll have time to support
+the code or to update the code.
 
 That said, if you're really determined to read and understand this
 code then here's a quite description of the basic architecture:
