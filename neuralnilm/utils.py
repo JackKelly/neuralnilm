@@ -102,7 +102,7 @@ def check_windows(windows):
 def sanitise_value_for_mogno(value):
     if isinstance(value, dict):
         value = sanitise_dict_for_mongo(value)
-    elif isinstance(value, list):
+    elif isinstance(value, list) or isinstance(value, np.ndarray):
         value = [sanitise_value_for_mogno(item) for item in value]
     elif isinstance(value, np.floating):
         value = float(value)
