@@ -1,7 +1,7 @@
 # neuralnilm
 Deep Neural Networks Applied to Energy Disaggregation
 
-**Please note that this code was never finished! It is incomplete! Please do not use unless you really, really know what you are doing! Please see my Neural NILM prototype code to see exactly what I implemented in my Neural NILM paper!**
+**Please note that this code was never finished! It is incomplete! Please do not use unless you really, really know what you are doing! Please see my Neural NILM prototype code to see exactly what I implemented in my Neural NILM paper!  You're best bet if you want to re-implement Neural NILM would probably be start from scratch using a modern framework like TensorFlow, and perhaps use nilmtk to help load the datasets.**
 
 This is a complete re-write of the
 [Neural NILM Prototype](https://github.com/JackKelly/neuralnilm_prototype).
