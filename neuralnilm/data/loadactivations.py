@@ -44,9 +44,9 @@ def load_nilmtk_activations(appliances, filename, sample_period, windows):
     dataset = nilmtk.DataSet(filename)
 
     all_activations = {}
-    for fold, buildings_and_windows in windows.iteritems():
+    for fold, buildings_and_windows in windows.items():
         activations_for_fold = {}
-        for building_i, window in buildings_and_windows.iteritems():
+        for building_i, window in buildings_and_windows.items():
             dataset.set_window(*window)
             elec = dataset.buildings[building_i].elec
             building_name = (

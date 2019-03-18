@@ -114,7 +114,7 @@ def sanitise_value_for_mogno(value):
 def sanitise_dict_for_mongo(dictionary):
     """Convert dict keys to strings (Mongo doesn't like numeric keys)"""
     new_dict = {}
-    for key, value in dictionary.iteritems():
+    for key, value in dictionary.items():
         new_dict[str(key)] = sanitise_value_for_mogno(value)
 
     return new_dict
@@ -123,8 +123,8 @@ def sanitise_dict_for_mongo(dictionary):
 def two_level_dict_to_series(dictionary):
     index = []
     values = []
-    for k0, v0 in dictionary.iteritems():
-        for k1, v1 in v0.iteritems():
+    for k0, v0 in dictionary.items():
+        for k1, v1 in v0.items():
             index.append((k0, k1))
             values.append(v1)
     return pd.Series(values, pd.MultiIndex.from_tuples(index))
@@ -132,7 +132,7 @@ def two_level_dict_to_series(dictionary):
 
 def two_level_series_to_dict(series):
     dictionary = {}
-    for (k0, k1), value in series.iteritems():
+    for (k0, k1), value in series.items():
         dictionary.setdefault(k0, {})[k1] = value
     return dictionary
 
@@ -161,8 +161,8 @@ def filter_activations(windows, activations, appliances):
     new_activations = {
         fold: {appliance: {} for appliance in appliances}
         for fold in DATA_FOLD_NAMES}
-    for fold, appliances in activations.iteritems():
-        for appliance, buildings in appliances.iteritems():
+    for fold, appliances in activations.items():
+        for appliance, buildings in appliances.items():
             required_building_ids = windows[fold].keys()
             required_building_names = [
                 'UK-DALE_building_{}'.format(i) for i in required_building_ids]
