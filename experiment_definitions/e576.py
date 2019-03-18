@@ -196,8 +196,8 @@ def filter_activations(windows, activations):
     new_activations = {
         fold: {appliance: {} for appliance in APPLIANCES}
         for fold in DATA_FOLD_NAMES}
-    for fold, appliances in activations.iteritems():
-        for appliance, buildings in appliances.iteritems():
+    for fold, appliances in activations.items():
+        for appliance, buildings in appliances.items():
             required_building_ids = windows[fold].keys()
             required_building_names = [
                 'UK-DALE_building_{}'.format(i) for i in required_building_ids]
@@ -207,4 +207,4 @@ def filter_activations(windows, activations):
                         activations[fold][appliance][building_name])
                 except KeyError:
                     pass
-    return activations
+    return new_activations
