@@ -205,4 +205,4 @@ def filter_activations(windows, activations):
                         activations[fold][appliance][building_name])
                 except KeyError:
                     pass
-    return activations
+    return new_activations
